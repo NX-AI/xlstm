@@ -1,0 +1,44 @@
+training:
+  batch_size: 256
+  lr: 0.001
+  seed: 42
+  val_every_step: 200
+  lr_warmup_steps: 2000
+  lr_decay_until_steps: ${.num_steps}
+  lr_decay_factor: 0.001
+  weight_decay: 0.1
+  num_steps: 20000
+  device: cuda
+  amp_precision: bfloat16
+  weight_precision: float32
+  enable_mixed_precision: true
+
+model:
+  num_blocks: 2
+  embedding_dim: 64
+  mlstm_block:
+    mlstm:
+      num_heads: 1
+  slstm_block: {}
+  slstm_at: []
+  context_length: ${dataset.kwargs.context_length}
+  vocab_size: ${dataset.kwargs.vocab_size}
+
+dataset:
+  name: form_language
+  kwargs:
+    synth_lang_type: parity
+    vocab_size: 3
+    seed: 1
+    enable_mask: true
+    context_length: 256
+    min_sequence_length: 3
+    max_sequence_length: 40
+    count:
+      train: 5120000
+      validation: 8192
+      test: 8192
+    subpar:
+      validation:
+        min_sequence_length: 40
+        max_sequence_length: 256

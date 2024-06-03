@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=42"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "xlstm"
+version = "0.0.1"
+authors = [
+  { name="Maximilian Beck", email="maximilianbeck@live.de" },
+  { name="Korbinian Poeppel", email="poeppel@ml.jku.at" },
+  { name="Andreas Auer", email="auer@ml.jku.at" },
+]
+description = "A novel LSTM variant with promising performance compared to Transformers."
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+
+# [tool.setuptools]
+# include_package_data = true
+
+[tool.setuptools.package-data]
+"xlstm" = ["blocks/slstm/src/cuda/*.c", "blocks/slstm/src/cuda/*.cc", "blocks/slstm/src/cuda/*.h", "blocks/slstm/src/cuda/*.cu", "blocks/slstm/src/cuda/*.cuh", "blocks/slstm/src/util/*.c", "blocks/slstm/src/util/*.cc", "blocks/slstm/src/util/*.h", "blocks/slstm/src/util/*.cu", "blocks/slstm/src/util/*.cuh"]
+
+[project.urls]
+# Homepage = ""
+# Issues = ""
