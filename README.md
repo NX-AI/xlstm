@@ -39,7 +39,6 @@ The `xLSTMBLockStack` is meant for use as alternative backbone in existing proje
 
 ```python
 import torch
-import sys
 
 from xlstm import (
     xLSTMBlockStack,
