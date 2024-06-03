@@ -4,20 +4,22 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "xlstm"
-version = "0.0.1"
+version = "1.0.0"
 authors = [
-  { name="Maximilian Beck", email="maximilianbeck@live.de" },
+  { name="Maximilian Beck", email="beck@ml.jku.at" },
   { name="Korbinian Poeppel", email="poeppel@ml.jku.at" },
   { name="Andreas Auer", email="auer@ml.jku.at" },
 ]
-description = "A novel LSTM variant with promising performance compared to Transformers."
+description = "A novel LSTM variant with promising performance compared to Transformers or State Space Models."
 readme = "README.md"
+license = {file="LICENSE"}
 requires-python = ">=3.10"
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: AGPL-3.0-only ",
     "Operating System :: OS Independent",
 ]
+keywords = ["LSTM", "Transformer", "Machine Learning", "Deep Learning", "State Space Models"]
 
 
 # [tool.setuptools]

@@ -8,7 +8,7 @@
 
 xLSTM is a new Recurrent Neural Network architecture based on ideas of the original LSTM.
 Through Exponential Gating with appropriate normalization and stabilization techniques and a new Matrix Memory it overcomes the limitations of the original LSTM 
-and shows promising performance on Language Modeling when compared to Transformers.
+and shows promising performance on Language Modeling when compared to Transformers or State Space Models.
 
 ## Minimal Installation
 
