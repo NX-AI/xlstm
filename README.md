@@ -15,10 +15,15 @@ and shows promising performance on Language Modeling when compared to Transforme
 Create a conda environment from the file `environment_pt220cu121.yaml`.
 Install the model code only (i.e. the module `xlstm`) as package:
 
+Instally via pip: 
 ```bash
-git clone ssh://git@git.bioinf.jku.at:5792/beck/xlstm-simple.git
-cd xlstm-simple
-pip install .
+pip install xlstm
+```
+Clone from github:
+```bash
+git clone https://github.com/NX-AI/xlstm.git
+cd xlstm
+pip install -e .
 ```
 
 ## Requirements
