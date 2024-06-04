@@ -11,14 +11,6 @@ import random
 import torch
 from torch.utils.cpp_extension import load as _load
 
-# import torch.nn.functional as F
-# torch._C._jit_set_profiling_executor(True)
-# torch._C._jit_set_profiling_mode(True)
-
-# print("INCLUDE:", torch.utils.cpp_extension.include_paths(cuda=True))
-# print("C++ compat", torch.utils.cpp_extension.check_compiler_abi_compatibility("g++"))
-# print("C compat", torch.utils.cpp_extension.check_compiler_abi_compatibility("gcc"))
-
 LOGGER = logging.getLogger(__name__)
 
 
@@ -33,12 +25,9 @@ def defines_to_cflags(defines=Union[dict[str, Union[int, str]], Sequence[tuple[s
 
 
 curdir = os.path.dirname(__file__)
-# print(curdir)
 
-# CUDA_INCLUDE = os.environ.get("CUDA_INCLUDE", "/usr/lib")
-os.environ["CUDA_LIB"] = os.path.join(os.path.split(torch.utils.cpp_extension.include_paths(cuda=True)[-1])[0], "lib")
-# print(os.environ.get("LD_LIBRARY_PATH", ""))
-# print(os.environ["CUDA_LIB"])
+if torch.cuda.is_available():
+    os.environ["CUDA_LIB"] = os.path.join(os.path.split(torch.utils.cpp_extension.include_paths(cuda=True)[-1])[0], "lib")
 
 
 def load(*, name, sources, extra_cflags=(), extra_cuda_cflags=(), **kwargs):
