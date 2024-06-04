@@ -1,4 +1,4 @@
-__version__ = "1.0.1"
+__version__ = "1.0.2"
 
 from .blocks.mlstm.block import mLSTMBlock, mLSTMBlockConfig
 from .blocks.mlstm.layer import mLSTMLayer, mLSTMLayerConfig
