@@ -12,7 +12,7 @@ import torchmetrics
 from .generate import ALL_ARGS
 from .online_generate import OnlineTaskGenerateMaskedSeparate
 from ..utils import DataGen
-from ...metrics import SequenceAccuracy
+from .metrics import SequenceAccuracy
 
 
 def create_dataclass(cls_name, params_list, additional=[]):
