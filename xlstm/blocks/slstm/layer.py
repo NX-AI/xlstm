@@ -148,7 +148,7 @@ class sLSTMLayer(nn.Module):
             self.ogate(x),
         )
 
-        y, slstm_state_state = self.slstm_cell(
+        y, slstm_state = self.slstm_cell(
             torch.cat([i, f, z, o], dim=-1), state=slstm_state
         )
 
