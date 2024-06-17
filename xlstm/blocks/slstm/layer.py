@@ -89,17 +89,17 @@ class sLSTMLayer(nn.Module):
         small_init_init_(self.zgate.weight, dim=self.config.embedding_dim)
         small_init_init_(self.ogate.weight, dim=self.config.embedding_dim)
 
-    def forward(
+    def step(
         self,
         x: torch.Tensor,
-        initial_state: Optional[torch.Tensor] = None,
-        return_last_state=False,
-        **kwargs,
-    ) -> torch.Tensor:
+        conv_state: Optional[torch.Tensor] = None,
+        slstm_state: Optional[torch.Tensor] = None,
+    ):
         B, S, _ = x.shape
 
         if self.config.conv1d_kernel_size > 0:
-            x_conv = self.conv_act_fn(self.conv1d(x))
+            x_conv, conv_state = self.conv1d.step(x, conv_state=conv_state)
+            x_conv = self.conv_act_fn(x_conv)
         else:
             x_conv = x
 
@@ -111,7 +111,45 @@ class sLSTMLayer(nn.Module):
         )
 
         y, last_state = self.slstm_cell(
-            torch.cat([i, f, z, o], dim=-1), state=initial_state
+            torch.cat([i, f, z, o], dim=-1), state=slstm_state
+        )
+
+        y = self.dropout(y)
+
+        out = self.group_norm(y).transpose(1, 2).view(B, S, -1)
+
+        return out, last_state
+
+    def forward(
+        self,
+        x: torch.Tensor,
+        conv_state: Optional[torch.Tensor] = None,
+        slstm_state: Optional[torch.Tensor] = None,
+        return_last_state=False,
+        **kwargs,
+    ) -> torch.Tensor:
+        B, S, _ = x.shape
+
+        if self.config.conv1d_kernel_size > 0:
+            if return_last_state:
+                x_conv = self.conv1d(x, conv_state, return_last_state=return_last_state)
+            else:
+                x_conv, conv_state = self.conv1d(
+                    x, conv_state, return_last_state=return_last_state
+                )
+            x_conv = self.conv_act_fn(x_conv)
+        else:
+            x_conv = x
+
+        i, f, z, o = (
+            self.fgate(x_conv),
+            self.igate(x_conv),
+            self.zgate(x),
+            self.ogate(x),
+        )
+
+        y, slstm_state_state = self.slstm_cell(
+            torch.cat([i, f, z, o], dim=-1), state=slstm_state
         )
 
         y = self.dropout(y)
@@ -119,6 +157,6 @@ class sLSTMLayer(nn.Module):
         out = self.group_norm(y).transpose(1, 2).view(B, S, -1)
 
         if return_last_state:
-            return out, last_state
+            return out, {"conv_state": conv_state, "slstm_state": slstm_state}
         else:
             return out
