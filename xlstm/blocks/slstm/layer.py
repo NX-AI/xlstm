@@ -131,7 +131,7 @@ class sLSTMLayer(nn.Module):
         B, S, _ = x.shape
 
         if self.config.conv1d_kernel_size > 0:
-            if return_last_state:
+            if not return_last_state:
                 x_conv = self.conv1d(x, conv_state, return_last_state=return_last_state)
             else:
                 x_conv, conv_state = self.conv1d(
