@@ -65,8 +65,12 @@ class xLSTMLMModel(WeightDecayOptimGroupMixin, nn.Module):
     def _create_weight_decay_optim_groups(self, **kwargs) -> tuple[Sequence[nn.Parameter], Sequence[nn.Parameter]]:
         weight_decay, no_weight_decay = super()._create_weight_decay_optim_groups(**kwargs)
         # remove token embedding and add it to the correct group, accrording to the config
-        weight_decay = set(weight_decay)
-        weight_decay.remove(self.token_embedding.weight)
+        weight_decay = list(weight_decay)
+        removed = 0
+        for idx in range(len(weight_decay)):
+            if weight_decay[idx - removed] is self.token_embedding.weight:
+                weight_decay.pop(idx - removed)
+                removed += 1
         weight_decay = tuple(weight_decay)
         if self.config.weight_decay_on_embedding:
             weight_decay += (self.token_embedding.weight,)
