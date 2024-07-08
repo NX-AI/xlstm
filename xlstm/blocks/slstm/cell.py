@@ -1,29 +1,23 @@
 # Copyright (c) NXAI GmbH and its affiliates 2023
 # Korbinian Poeppel
+from __future__ import annotations
+
 import logging
 import os
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Optional, Literal
+from math import sqrt
 from pathlib import Path
+from typing import Literal
 
-import torch
-
-from torch.autograd.function import once_differentiable
-from .src.cuda_init import load
-from .src.vanilla import (
-    slstm_forward,
-    slstm_forward_step,
-    slstm_pointwise_function_registry,
-)
-from ...components.util import conditional_decorator, round_to_multiple, ParameterProxy
-from ...components.init import bias_linspace_init_
-
-from dataclasses import dataclass, field
-from typing import Callable, Literal, Optional, Union, Sequence
-import logging
 import torch
 import torch.nn as nn
-from math import sqrt
+from torch.autograd.function import once_differentiable
+
+from ...components.init import bias_linspace_init_
+from ...components.util import ParameterProxy, conditional_decorator
+from .src.cuda_init import load
+from .src.vanilla import slstm_forward, slstm_forward_step, slstm_pointwise_function_registry
 
 LOGGER = logging.getLogger(__name__)
 
@@ -61,32 +55,24 @@ _python_dtype_to_cuda_dtype = {
 @dataclass
 class sLSTMCellConfig:
     hidden_size: int = -1
-    num_heads: int = (
-        4  # this must divide the hidden size, is not yet supported by all versions in this directory
-    )
+    num_heads: int = 4  # this must divide the hidden size, is not yet supported by all versions in this directory
     num_states: int = 4  # this is for the sLSTM, a standard LSTM  has 2
     backend: Literal["vanilla", "cuda"] = "cuda"
     # the type of function a cell computes
     function: str = "slstm"
-    bias_init: Literal["powerlaw_blockdependent", "small_init", "standard"] = (
-        "powerlaw_blockdependent"
-    )
+    bias_init: Literal["powerlaw_blockdependent", "small_init", "standard"] = "powerlaw_blockdependent"
     recurrent_weight_init: Literal["zeros", "standard"] = "zeros"
 
-    _block_idx: int = (
-        0  # index in the block sequence for a residual stacked model, needed for forget gate init
-    )
-    _num_blocks: int = (
-        1  # how many blocks there are in the residually stacked model, needed for forget gate init
-    )
+    _block_idx: int = 0  # index in the block sequence for a residual stacked model, needed for forget gate init
+    _num_blocks: int = 1  # how many blocks there are in the residually stacked model, needed for forget gate init
 
     num_gates: int = 4
     # this option cuts of the gradient for recurrent connection, i.e. no exploding gradient if False
     gradient_recurrent_cut: bool = False
     # this option clips the gradient values for recurrent connections at dy
-    gradient_recurrent_clipval: Optional[float] = None
+    gradient_recurrent_clipval: float | None = None
     # this option clips the y value
-    forward_clipval: Optional[float] = None
+    forward_clipval: float | None = None
 
     # this can be ignored internally, but may be used to optimize kernels
     batch_size: int = 8
@@ -107,16 +93,16 @@ class sLSTMCellConfig:
     constants: dict = field(default_factory=dict)
     # dtypes
     dtype: DTYPES = "bfloat16"
-    dtype_b: Optional[DTYPES] = "float32"  # biases
-    dtype_r: Optional[DTYPES] = None  # recurrent matrix
-    dtype_w: Optional[DTYPES] = None  # inputs / w matrix
-    dtype_g: Optional[DTYPES] = None  # gates
-    dtype_s: Optional[DTYPES] = None  # states
-    dtype_a: Optional[DTYPES] = None  # internal accumulation
+    dtype_b: DTYPES | None = "float32"  # biases
+    dtype_r: DTYPES | None = None  # recurrent matrix
+    dtype_w: DTYPES | None = None  # inputs / w matrix
+    dtype_g: DTYPES | None = None  # gates
+    dtype_s: DTYPES | None = None  # states
+    dtype_a: DTYPES | None = None  # internal accumulation
 
     # mixed precision
     enable_automatic_mixed_precision: bool = True
-    initial_val: Union[float, Sequence[float]] = 0.0
+    initial_val: float | Sequence[float] = 0.0
 
     @property
     def head_dim(self):
@@ -162,9 +148,7 @@ class sLSTMCellConfig:
         if self.dtype_g is None:
             self.dtype_g = self.dtype_r
 
-        assert (
-            self.function in rnn_function_registry
-        ), f"RNN function {self.function} not in registry"
+        assert self.function in rnn_function_registry, f"RNN function {self.function} not in registry"
         self.num_states = rnn_function_registry[self.function]["states"]
         if "initial_val" in rnn_function_registry[self.function]:
             self.initial_val = rnn_function_registry[self.function]["initial_val"]
@@ -188,24 +172,24 @@ class sLSTMCellConfig:
             ]
             + (
                 [
-                    f"-DSLSTM_GRADIENT_RECURRENT_CLIPVAL_VALID=true",
+                    "-DSLSTM_GRADIENT_RECURRENT_CLIPVAL_VALID=true",
                     f"-DSLSTM_GRADIENT_RECURRENT_CLIPVAL={self.gradient_recurrent_clipval}",
                 ]
                 if self.gradient_recurrent_clipval is not None
                 else [
-                    f"-DSLSTM_GRADIENT_RECURRENT_CLIPVAL_VALID=false",
-                    f"-DSLSTM_GRADIENT_RECURRENT_CLIPVAL=0.0",
+                    "-DSLSTM_GRADIENT_RECURRENT_CLIPVAL_VALID=false",
+                    "-DSLSTM_GRADIENT_RECURRENT_CLIPVAL=0.0",
                 ]
             )
             + (
                 [
-                    f"-DSLSTM_FORWARD_CLIPVAL_VALID=true",
+                    "-DSLSTM_FORWARD_CLIPVAL_VALID=true",
                     f"-DSLSTM_FORWARD_CLIPVAL={self.gradient_recurrent_clipval}",
                 ]
                 if self.gradient_recurrent_clipval is not None
                 else [
-                    f"-DSLSTM_FORWARD_CLIPVAL_VALID=false",
-                    f"-DSLSTM_FORWARD_CLIPVAL=0.0",
+                    "-DSLSTM_FORWARD_CLIPVAL_VALID=false",
+                    "-DSLSTM_FORWARD_CLIPVAL=0.0",
                 ]
             )
         )
@@ -220,16 +204,8 @@ class sLSTMCellBase(nn.Module):
         LOGGER.debug("Init module")
 
         head_dim = self.config.hidden_size // self.config.num_heads
-        dtype_r = (
-            self.config.torch_dtype_r
-            if not self.config.enable_automatic_mixed_precision
-            else None
-        )
-        dtype_b = (
-            self.config.torch_dtype_b
-            if not self.config.enable_automatic_mixed_precision
-            else None
-        )
+        dtype_r = self.config.torch_dtype_r if not self.config.enable_automatic_mixed_precision else None
+        dtype_b = self.config.torch_dtype_b if not self.config.enable_automatic_mixed_precision else None
 
         self._recurrent_kernel_ = nn.Parameter(
             torch.empty(
@@ -246,18 +222,10 @@ class sLSTMCellBase(nn.Module):
             self._recurrent_kernel_int2ext,
             self._recurrent_kernel_ext2int,
         )
-        self._recurrent_kernel_ = nn.Parameter(
-            self._recurrent_kernel_ext2int(self._recurrent_kernel_.data)
-        )
+        self._recurrent_kernel_ = nn.Parameter(self._recurrent_kernel_ext2int(self._recurrent_kernel_.data))
 
-        self._bias_ = nn.Parameter(
-            torch.empty(
-                self.config.num_heads, self.config.num_gates, head_dim, dtype=dtype_b
-            )
-        )
-        self.bias = ParameterProxy(
-            self, "_bias", self._bias_int2ext, self._bias_ext2int
-        )
+        self._bias_ = nn.Parameter(torch.empty(self.config.num_heads, self.config.num_gates, head_dim, dtype=dtype_b))
+        self.bias = ParameterProxy(self, "_bias", self._bias_int2ext, self._bias_ext2int)
         self._bias_ = nn.Parameter(self._bias_ext2int(self._bias_.data))
 
         self.reset_parameters()
@@ -281,17 +249,13 @@ class sLSTMCellBase(nn.Module):
     def _bias(self):
         return self._bias_
 
-    def _recurrent_kernel_ext2int(
-        self, recurrent_kernel_ext: torch.Tensor
-    ) -> torch.Tensor:
+    def _recurrent_kernel_ext2int(self, recurrent_kernel_ext: torch.Tensor) -> torch.Tensor:
         return recurrent_kernel_ext
 
     def _bias_ext2int(self, bias_ext: torch.Tensor) -> torch.Tensor:
         return bias_ext
 
-    def _recurrent_kernel_int2ext(
-        self, recurrent_kernel_int: torch.Tensor
-    ) -> torch.Tensor:
+    def _recurrent_kernel_int2ext(self, recurrent_kernel_int: torch.Tensor) -> torch.Tensor:
         return recurrent_kernel_int
 
     def _bias_int2ext(self, bias_int: torch.Tensor) -> torch.Tensor:
@@ -333,13 +297,9 @@ class sLSTMCellBase(nn.Module):
         # torch.Size([2, 5, 10])
         """
         if self.config.input_shape == "SBGNH":
-            y = x.view(
-                x.shape[0], x.shape[1], self.config.num_gates, self.config.num_heads, -1
-            )
+            y = x.view(x.shape[0], x.shape[1], self.config.num_gates, self.config.num_heads, -1)
         elif self.config.input_shape == "BSGNH":
-            y = x.view(
-                x.shape[0], x.shape[1], self.config.num_gates, self.config.num_heads, -1
-            ).permute(1, 0, 2, 3, 4)
+            y = x.view(x.shape[0], x.shape[1], self.config.num_gates, self.config.num_heads, -1).permute(1, 0, 2, 3, 4)
         else:
             raise ValueError("Bad input_shape value")
         if self.config.internal_input_shape == "SBGNH":
@@ -353,11 +313,11 @@ class sLSTMCellBase(nn.Module):
 
     def _permute_output(self, x: torch.Tensor) -> torch.Tensor:
         """
-        >>> BaseRNN(BaseRNNConfig(10, 16, num_heads=2, output_shape='SBH'))._permute_output(torch.zeros((5, 2, 16))).shape
+        >>> BaseRNN(BaseRNNConfig(10, 16, num_heads=2, output_shape="SBH"))._permute_output(torch.zeros((5, 2, 16))).shape
         torch.Size([5, 2, 16])
-        >>> BaseRNN(BaseRNNConfig(10, 16, num_heads=2, output_shape='BNSH'))._permute_output(torch.zeros((5, 3, 16))).shape
+        >>> BaseRNN(BaseRNNConfig(10, 16, num_heads=2, output_shape="BNSH"))._permute_output(torch.zeros((5, 3, 16))).shape
         torch.Size([3, 2, 5, 8])
-        >>> BaseRNN(BaseRNNConfig(10, 16, num_heads=2, output_shape='SBNH'))._permute_output(torch.zeros((5, 3, 16))).shape
+        >>> BaseRNN(BaseRNNConfig(10, 16, num_heads=2, output_shape="SBNH"))._permute_output(torch.zeros((5, 3, 16))).shape
         torch.Size([5, 3, 2, 8])
         """
         if self.config.output_shape == "SBH":
@@ -365,22 +325,16 @@ class sLSTMCellBase(nn.Module):
         elif self.config.output_shape == "BSH":
             return x.permute(1, 0, 2)
         elif self.config.output_shape == "BNSH":
-            return x.view(
-                (x.shape[0], x.shape[1], self.config.num_heads, self.config.head_dim)
-            ).permute(1, 2, 0, 3)
+            return x.view((x.shape[0], x.shape[1], self.config.num_heads, self.config.head_dim)).permute(1, 2, 0, 3)
         elif self.config.output_shape == "SBNH":
-            return x.view(
-                (x.shape[0], x.shape[1], self.config.num_heads, self.config.head_dim)
-            )
+            return x.view((x.shape[0], x.shape[1], self.config.num_heads, self.config.head_dim))
 
     def reset_parameters(self):
         """Resets this layer's parameters to their initial values."""
         for h in range(self.config.num_heads):
             for i, gate in enumerate(["i", "f", "z", "o"]):
                 if self.config.recurrent_weight_init == "zeros":
-                    self.recurrent_kernel[h, :, i, :] = nn.init.zeros_(
-                        self.recurrent_kernel[h, :, i, :]
-                    )
+                    self.recurrent_kernel[h, :, i, :] = nn.init.zeros_(self.recurrent_kernel[h, :, i, :])
                 elif self.config.recurrent_weight_init == "standard":
                     self.recurrent_kernel[h, :, i, :] = nn.init.uniform_(
                         self.recurrent_kernel[h, :, i, :],
@@ -391,14 +345,6 @@ class sLSTMCellBase(nn.Module):
             for i, gate in enumerate(["i", "f", "z", "o"]):
                 if self.config.bias_init == "powerlaw_blockdependent":
                     if gate == "f":
-                        kwargs = (
-                            dict(
-                                right_x=5.0,
-                                range_x_neg_dir=12.0,
-                                spread_lower=0.3,
-                                spread_upper=3.0,
-                            ),
-                        )
                         ratio_0_to_1 = (
                             self.config._block_idx / (self.config._num_blocks - 1)
                             if self.config._num_blocks > 1
@@ -407,10 +353,7 @@ class sLSTMCellBase(nn.Module):
                         init_values = -(
                             -5.0
                             + 12.0
-                            * (
-                                torch.arange(self.config.head_dim)
-                                / (self.config.head_dim - 1)
-                            )
+                            * (torch.arange(self.config.head_dim) / (self.config.head_dim - 1))
                             ** (0.3 + 1.3 * ratio_0_to_1)
                         )
                         with torch.no_grad():
@@ -419,9 +362,7 @@ class sLSTMCellBase(nn.Module):
                         self.bias[h, i] = nn.init.zeros_(self.bias[h, i])
                 elif self.config.bias_init == "small_init":
                     if gate == "f":
-                        self.bias[h, i] = bias_linspace_init_(
-                            self.bias[h, i], start=3.0, end=6.0
-                        )
+                        self.bias[h, i] = bias_linspace_init_(self.bias[h, i], start=3.0, end=6.0)
                     else:
                         self.bias[h, i] = nn.init.zeros_(self.bias[h, i])
                 elif self.config.bias_init == "zeros":
@@ -434,8 +375,8 @@ class sLSTMCellBase(nn.Module):
                     )
 
     def _check_input(self, input: torch.Tensor) -> None:
-        assert self.config.hidden_size * self.config.num_gates == input.size(
-            -1
+        assert (
+            self.config.hidden_size * self.config.num_gates == input.size(-1)
         ), f"Input size mismatch: Expected input size {self.config.hidden_size * self.config.num_gates}, but got {input.size(-1)}."
 
     def _zero_state(self, input: torch.Tensor) -> torch.Tensor:
@@ -455,9 +396,7 @@ class sLSTMCellBase(nn.Module):
         )
         return state
 
-    def _get_state(
-        self, input: torch.Tensor, state: Optional[torch.Tensor] = None
-    ) -> torch.Tensor:
+    def _get_state(self, input: torch.Tensor, state: torch.Tensor | None = None) -> torch.Tensor:
         if state is None:
             state = self._zero_state(input)
         else:
@@ -478,14 +417,10 @@ class sLSTMCellBase(nn.Module):
     def _is_cuda(self) -> bool:
         is_cuda = [tensor.is_cuda for tensor in list(self.parameters())]
         if any(is_cuda) and not all(is_cuda):
-            raise ValueError(
-                "RNN tensors should all be CUDA tensors or none should be CUDA tensors"
-            )
+            raise ValueError("RNN tensors should all be CUDA tensors or none should be CUDA tensors")
         return any(is_cuda)
 
-    def step(
-        self, input: torch.Tensor, state: torch.Tensor
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+    def step(self, input: torch.Tensor, state: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         self._check_input(input)
         input = self._permute_input(input)
         states = self._get_state(input, state)
@@ -506,7 +441,7 @@ class sLSTMCellBase(nn.Module):
             return output.to(input.dtype), state.to(input.dtype)
 
 
-class sLSTMCellCUDA(object):
+class sLSTMCellCUDA:
     mod = {}
 
     @classmethod
@@ -523,33 +458,19 @@ class sLSTMCellCUDA(object):
                     str(curdir / "src" / "util" / "blas.cu"),
                     str(curdir / "src" / "util" / "cuda_error.cu"),
                 ],
-                extra_cflags=[
-                    f"-D{const}={constval}"
-                    for const, constval in config.constants.items()
-                ]
-                + config.defines,
+                extra_cflags=[f"-D{const}={constval}" for const, constval in config.constants.items()] + config.defines,
             )
         return cls.mod[repr(config)]
 
 
 def sLSTMCellFuncGenerator(training, config: sLSTMCellConfig):
     slstm_cuda = sLSTMCellCUDA.instance(config=config)
-    slstm_mod = slstm_cuda.sLSTMFunc(
-        training, config.batch_size, config.hidden_size, config.num_heads
-    )
+    slstm_mod = slstm_cuda.sLSTMFunc(training, config.batch_size, config.hidden_size, config.num_heads)
 
     class sLSTMCellFunction(torch.autograd.Function):
         @staticmethod
-        @conditional_decorator(
-            config.enable_automatic_mixed_precision, torch.cuda.amp.custom_fwd
-        )
+        @conditional_decorator(config.enable_automatic_mixed_precision, torch.cuda.amp.custom_fwd)
         def forward(ctx, training, *inputs):
-            dtypes = (
-                inputs[0].dtype,
-                inputs[1].dtype,
-                inputs[2].dtype,
-                inputs[3].dtype,
-            )
             if config.enable_automatic_mixed_precision:
                 inputs = (
                     inputs[0].to(dtype=config.torch_dtype_w),
@@ -565,14 +486,10 @@ def sLSTMCellFuncGenerator(training, config: sLSTMCellConfig):
 
         @staticmethod
         @once_differentiable
-        @conditional_decorator(
-            config.enable_automatic_mixed_precision, torch.cuda.amp.custom_bwd
-        )
+        @conditional_decorator(config.enable_automatic_mixed_precision, torch.cuda.amp.custom_bwd)
         def backward(ctx, grad_s):
             if not ctx.training:
-                raise RuntimeError(
-                    "sLSTMCell backward can only be called in training mode"
-                )
+                raise RuntimeError("sLSTMCell backward can only be called in training mode")
             saved = [*ctx.saved_tensors]
             saved[0] = saved[0].permute(0, 2, 1).contiguous()  # transpose R
             if config.gradient_recurrent_cut:
@@ -596,9 +513,7 @@ class sLSTMCell_vanilla(sLSTMCellBase):
 
         self.config.internal_input_shape = "SBGNH"
 
-    def _recurrent_kernel_ext2int(
-        self, recurrent_kernel_ext: torch.Tensor
-    ) -> torch.Tensor:
+    def _recurrent_kernel_ext2int(self, recurrent_kernel_ext: torch.Tensor) -> torch.Tensor:
         return (
             recurrent_kernel_ext.reshape(
                 self.config.num_heads,
@@ -614,13 +529,16 @@ class sLSTMCell_vanilla(sLSTMCellBase):
             )
         )
 
-    def _recurrent_kernel_int2ext(
-        self, recurrent_kernel_int: torch.Tensor
-    ) -> torch.Tensor:
+    def _recurrent_kernel_int2ext(self, recurrent_kernel_int: torch.Tensor) -> torch.Tensor:
         """
-        >>> (); mod = sLSTMCell_vanilla(sLSTMCellConfig(hidden_size=64, num_heads=2), skip_backend_init=True); () # doctest:+ELLIPSIS
+        >>> ()
+        ... mod = sLSTMCell_vanilla(sLSTMCellConfig(hidden_size=64, num_heads=2), skip_backend_init=True)
+        ... ()  # doctest:+ELLIPSIS
         (...)
-        >>> torch.allclose(mod._recurrent_kernel_ext2int(mod._recurrent_kernel_int2ext(mod._recurrent_kernel)), mod._recurrent_kernel)
+        >>> torch.allclose(
+        ...     mod._recurrent_kernel_ext2int(mod._recurrent_kernel_int2ext(mod._recurrent_kernel)),
+        ...     mod._recurrent_kernel,
+        ... )
         True
         """
         return recurrent_kernel_int.reshape(
@@ -632,28 +550,24 @@ class sLSTMCell_vanilla(sLSTMCellBase):
 
     def _bias_ext2int(self, bias_ext: torch.Tensor) -> torch.Tensor:
         return (
-            bias_ext.reshape(
-                self.config.num_heads, self.config.num_gates, self.config.head_dim
-            )
+            bias_ext.reshape(self.config.num_heads, self.config.num_gates, self.config.head_dim)
             .permute(1, 0, 2)
             .reshape(-1)
         )
 
     def _bias_int2ext(self, bias_int: torch.Tensor) -> torch.Tensor:
         """
-        >>> (); mod = sLSTMCell_vanilla(sLSTMCellConfig(hidden_size=64, num_heads=2), skip_backend_init=True); () # doctest:+ELLIPSIS
+        >>> ()
+        ... mod = sLSTMCell_vanilla(sLSTMCellConfig(hidden_size=64, num_heads=2), skip_backend_init=True)
+        ... ()  # doctest:+ELLIPSIS
         (...)
         >>> torch.allclose(mod._bias_ext2int(mod._bias_int2ext(mod._bias)), mod._bias)
         True
         """
 
-        return bias_int.reshape(
-            self.config.num_gates, self.config.num_heads, self.config.head_dim
-        ).permute(1, 0, 2)
+        return bias_int.reshape(self.config.num_gates, self.config.num_heads, self.config.head_dim).permute(1, 0, 2)
 
-    def _impl(
-        self, training: bool, input: torch.Tensor, state: torch.Tensor
-    ) -> torch.Tensor:
+    def _impl(self, training: bool, input: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
         return slstm_forward(
             input,
             state,
@@ -663,9 +577,7 @@ class sLSTMCell_vanilla(sLSTMCellBase):
             constants=self.config.constants,
         )[0]
 
-    def _impl_step(
-        self, training: bool, input: torch.Tensor, state: torch.Tensor
-    ) -> torch.Tensor:
+    def _impl_step(self, training: bool, input: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
         return slstm_forward_step(
             input,
             state,
@@ -689,9 +601,7 @@ class sLSTMCell_cuda(sLSTMCellBase):
         if not skip_backend_init:
             self.func = sLSTMCellFuncGenerator(self.training, config)
 
-    def _recurrent_kernel_ext2int(
-        self, recurrent_kernel_ext: torch.Tensor
-    ) -> torch.Tensor:
+    def _recurrent_kernel_ext2int(self, recurrent_kernel_ext: torch.Tensor) -> torch.Tensor:
         return recurrent_kernel_ext.reshape(
             self.config.num_heads,
             self.config.head_dim,
@@ -703,14 +613,14 @@ class sLSTMCell_cuda(sLSTMCellBase):
             self.config.num_gates * self.config.head_dim,
         )
 
-    def _recurrent_kernel_int2ext(
-        self, recurrent_kernel_int: torch.tensor
-    ) -> torch.Tensor:
+    def _recurrent_kernel_int2ext(self, recurrent_kernel_int: torch.tensor) -> torch.Tensor:
         """
-        >>> (); mod = sLSTMCell_cuda(
-        ...     sLSTMCellConfig(hidden_size=64, num_heads=2), skip_backend_init=True); () # doctest:+ELLIPSIS
-        (...)
-        >>> torch.allclose(mod._recurrent_kernel_ext2int(mod._recurrent_kernel_int2ext(mod._recurrent_kernel)), mod._recurrent_kernel)
+        >>> mod = sLSTMCell_cuda(sLSTMCellConfig(hidden_size=64, num_heads=2), skip_backend_init=True)
+        (...)  # doctest:+ELLIPSIS
+        >>> torch.allclose(
+        ...     mod._recurrent_kernel_ext2int(mod._recurrent_kernel_int2ext(mod._recurrent_kernel)),
+        ...     mod._recurrent_kernel,
+        ... )
         True
         """
 
@@ -723,25 +633,20 @@ class sLSTMCell_cuda(sLSTMCellBase):
 
     def _bias_ext2int(self, bias_ext: torch.Tensor) -> torch.Tensor:
         return (
-            bias_ext.reshape(
-                self.config.num_heads, self.config.num_gates, self.config.head_dim
-            )
+            bias_ext.reshape(self.config.num_heads, self.config.num_gates, self.config.head_dim)
             .permute(0, 1, 2)
             .reshape(-1)
         )
 
     def _bias_int2ext(self, bias_int: torch.Tensor) -> torch.Tensor:
         """
-        >>> (); mod = sLSTMCell_cuda(
-        ...     sLSTMCellConfig(hidden_size=64, num_heads=2), skip_backend_init=True); () # doctest:+ELLIPSIS
-        (...)
+        >>> mod = sLSTMCell_cuda(sLSTMCellConfig(hidden_size=64, num_heads=2), skip_backend_init=True)
+        (...)  # doctest:+ELLIPSIS
         >>> torch.allclose(mod._bias_ext2int(mod._bias_int2ext(mod._bias)), mod._bias)
         True
         """
 
-        return bias_int.reshape(
-            self.config.num_heads, self.config.num_gates, self.config.head_dim
-        )
+        return bias_int.reshape(self.config.num_heads, self.config.num_gates, self.config.head_dim)
 
     def _impl_step(
         self,
@@ -781,6 +686,4 @@ class sLSTMCell(sLSTMCellBase):
         elif config.backend == "vanilla":
             return sLSTMCell_vanilla(config)
         else:
-            raise RuntimeError(
-                f'sLSTMCell unknown backend {config.backend}, choose from ["cuda", "vanilla"]'
-            )
+            raise RuntimeError(f'sLSTMCell unknown backend {config.backend}, choose from ["cuda", "vanilla"]')

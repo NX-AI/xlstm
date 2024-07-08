@@ -3,16 +3,16 @@
 import inspect
 import itertools
 import random
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field, make_dataclass
-from typing import Mapping, List
 
 import torch
 import torchmetrics
 
+from ...metrics import SequenceAccuracy
+from ..utils import DataGen
 from .generate import ALL_ARGS
 from .online_generate import OnlineTaskGenerateMaskedSeparate
-from ..utils import DataGen
-from ...metrics import SequenceAccuracy
 
 
 def create_dataclass(cls_name, params_list, additional=[]):
@@ -42,15 +42,9 @@ FormLangDatasetConfigBase = create_dataclass(
 class FormLangDatasetConfig(FormLangDatasetConfigBase):
     shift: int = 1
     enable_mask: bool = False
-    additional_prefix_tokens: int = (
-        0  # e.g. adding [CLS]... before for global attention memory
-    )
-    additional_suffix_tokens: int = (
-        0  # e.g. adding [SEP]... after for global attention memory
-    )
-    additional_premask_tokens: int = (
-        0  # e.g. adding [PREMASK]... before every mask to enable "causal working memory"
-    )
+    additional_prefix_tokens: int = 0  # e.g. adding [CLS]... before for global attention memory
+    additional_suffix_tokens: int = 0  # e.g. adding [SEP]... after for global attention memory
+    additional_premask_tokens: int = 0  # e.g. adding [PREMASK]... before every mask to enable "causal working memory"
 
 
 class FormLangDataset(torch.utils.data.Dataset):
@@ -87,29 +81,17 @@ class FormLangDataset(torch.utils.data.Dataset):
             - self.additional_suffix_tokens
             - self.additional_premask_tokens
         )
-        suffix_token_offset = (
-            self.vocab_size
-            - self.additional_suffix_tokens
-            - self.additional_premask_tokens
-        )
-        prefix_tokens = torch.arange(
-            prefix_token_offset, prefix_token_offset + self.additional_prefix_tokens
-        )
-        suffix_tokens = torch.arange(
-            suffix_token_offset, suffix_token_offset + self.additional_suffix_tokens
-        )
+        suffix_token_offset = self.vocab_size - self.additional_suffix_tokens - self.additional_premask_tokens
+        prefix_tokens = torch.arange(prefix_token_offset, prefix_token_offset + self.additional_prefix_tokens)
+        suffix_tokens = torch.arange(suffix_token_offset, suffix_token_offset + self.additional_suffix_tokens)
         seq = torch.from_numpy(self._dataset[idx])
         seq = torch.concat((prefix_tokens, seq, suffix_tokens))
         mask = torch.from_numpy(self._dataset_mask[idx])
         mask = torch.concat(
             (
-                torch.zeros([self.additional_prefix_tokens]).to(
-                    device=mask.device, dtype=mask.dtype
-                ),
+                torch.zeros([self.additional_prefix_tokens]).to(device=mask.device, dtype=mask.dtype),
                 mask,
-                torch.zeros([self.additional_suffix_tokens]).to(
-                    device=mask.device, dtype=mask.dtype
-                ),
+                torch.zeros([self.additional_suffix_tokens]).to(device=mask.device, dtype=mask.dtype),
             )
         )
         mask = mask.contiguous()
@@ -136,9 +118,7 @@ class FormLangDataset(torch.utils.data.Dataset):
         if self.enable_mask:
             # mask
             seqIn = torch.where(mask == 1, self.pad_idx, seq).to(dtype=torch.long)
-            seqOut = torch.where(mask == 1, seq, self.target_pad_idx).to(
-                dtype=torch.long
-            )
+            seqOut = torch.where(mask == 1, seq, self.target_pad_idx).to(dtype=torch.long)
         else:
             seqIn = seq.to(dtype=torch.long)
             seqOut = seq.to(dtype=torch.long)
@@ -180,21 +160,9 @@ class FormLangDatasetGenerator(DataGen):
                 kwargs = asdict(self.config)
                 kwargs["vocab_size"] = (
                     kwargs["vocab_size"]
-                    - (
-                        kwargs["additional_prefix_tokens"]
-                        if "additional_prefix_tokens" in kwargs
-                        else 0
-                    )
-                    - (
-                        kwargs["additional_suffix_tokens"]
-                        if "additional_suffix_tokens" in kwargs
-                        else 0
-                    )
-                    - (
-                        kwargs["additional_premask_tokens"]
-                        if "additional_premask_tokens" in kwargs
-                        else 0
-                    )
+                    - (kwargs["additional_prefix_tokens"] if "additional_prefix_tokens" in kwargs else 0)
+                    - (kwargs["additional_suffix_tokens"] if "additional_suffix_tokens" in kwargs else 0)
+                    - (kwargs["additional_premask_tokens"] if "additional_premask_tokens" in kwargs else 0)
                 )
                 if (
                     "subpar" in kwargs
@@ -207,9 +175,7 @@ class FormLangDatasetGenerator(DataGen):
                         kwargs[param] = subconfig[param]
 
                 kwargs["count"] = kwargs["count"][subset]
-                online_generator = OnlineTaskGenerateMaskedSeparate(
-                    self.seeds[subset_part], kwargs
-                )
+                online_generator = OnlineTaskGenerateMaskedSeparate(self.seeds[subset_part], kwargs)
                 self.datasets[subset_part] = FormLangDataset(
                     online_generator.dataset,
                     online_generator.dataset_mask,
@@ -224,7 +190,7 @@ class FormLangDatasetGenerator(DataGen):
                     additional_suffix_tokens=self.config.additional_suffix_tokens,
                 )
 
-    def _resolve_subset_subparts(self, subset) -> List[str]:
+    def _resolve_subset_subparts(self, subset) -> list[str]:
         subset_subparts = []
         if (
             self.config.subpar is not None
@@ -232,8 +198,7 @@ class FormLangDatasetGenerator(DataGen):
                 subparts := [
                     subpart
                     for subpart in self.config.subpar.keys()
-                    if subpart.startswith(subset)
-                    and self.config.subpar[subpart] is not None
+                    if subpart.startswith(subset) and self.config.subpar[subpart] is not None
                 ]
             )
             > 0
@@ -269,25 +234,19 @@ class FormLangDatasetGenerator(DataGen):
     @property
     def train_metrics(self) -> torchmetrics.MetricCollection:
         return torchmetrics.MetricCollection(
-            SequenceAccuracy(
-                task="multiclass", num_classes=self.vocab_size, ignore_index=-1
-            )
+            SequenceAccuracy(task="multiclass", num_classes=self.vocab_size, ignore_index=-1)
         )
 
     @property
     def validation_metrics(self) -> torchmetrics.MetricCollection:
         return torchmetrics.MetricCollection(
-            SequenceAccuracy(
-                task="multiclass", num_classes=self.vocab_size, ignore_index=-1
-            )
+            SequenceAccuracy(task="multiclass", num_classes=self.vocab_size, ignore_index=-1)
         )
 
     @property
     def test_metrics(self) -> torchmetrics.MetricCollection:
         return torchmetrics.MetricCollection(
-            SequenceAccuracy(
-                task="multiclass", num_classes=self.vocab_size, ignore_index=-1
-            )
+            SequenceAccuracy(task="multiclass", num_classes=self.vocab_size, ignore_index=-1)
         )
 
     @property

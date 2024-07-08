@@ -1,5 +1,4 @@
 # Copyright (c) NXAI GmbH and its affiliates 2024
-from typing import Optional
 
 import torch
 import torchmetrics
@@ -7,8 +6,8 @@ from torchmetrics import Metric
 
 
 class SequenceAccuracy(Metric):
-    is_differentiable: Optional[bool] = False
-    higher_is_better: Optional[bool] = True
+    is_differentiable: bool | None = False
+    higher_is_better: bool | None = True
 
     def __init__(self, **kwargs):
         super().__init__()

@@ -1,7 +1,8 @@
 # Copyright (c) NXAI GmbH and its affiliates 2024
 # Maximilian Beck
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Literal
+from typing import Literal
 
 import torch
 from torch import nn
@@ -23,9 +24,7 @@ def get_act_fn(act_fn_name: str) -> Callable[[torch.Tensor], torch.Tensor]:
     if act_fn_name in _act_fn_registry:
         return _act_fn_registry[act_fn_name]
     else:
-        assert (
-            False
-        ), f'Unknown activation function name "{act_fn_name}". Available activation functions are: {str(_act_fn_registry.keys())}'
+        assert False, f'Unknown activation function name "{act_fn_name}". Available activation functions are: {str(_act_fn_registry.keys())}'
 
 
 @dataclass
@@ -41,9 +40,7 @@ class FeedForwardConfig(UpProjConfigMixin):
 
     def __post_init__(self):
         self._set_proj_up_dim(embedding_dim=self.embedding_dim)
-        assert (
-            self.act_fn in _act_fn_registry
-        ), f"Unknown activation function {self.act_fn}"
+        assert self.act_fn in _act_fn_registry, f"Unknown activation function {self.act_fn}"
 
 
 class GatedFeedForward(nn.Module):

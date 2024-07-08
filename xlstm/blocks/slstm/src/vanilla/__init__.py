@@ -1,12 +1,12 @@
 # Copyright (c) NXAI GmbH and its affiliates 2023
 # Korbininan Pöppel
 
-from typing import Callable
+from collections.abc import Callable
+
 import torch
 
-from .slstm import slstm_forward_pointwise as slstm_forward_pointwise_slstm
 from .lstm import slstm_forward_pointwise as slstm_forward_pointwise_lstm
-
+from .slstm import slstm_forward_pointwise as slstm_forward_pointwise_slstm
 
 slstm_pointwise_function_registry: dict[str, Callable] = {
     "slstm": slstm_forward_pointwise_slstm,
@@ -19,17 +19,13 @@ def slstm_forward(
     states: torch.Tensor,  # [4, B, H] only the first is used for recurrence!
     R: torch.Tensor,  # [K, R*H, H] - K num_heads
     b: torch.Tensor,  # [T*H]
-    pointwise_forward: Callable[
-        tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, dict[str, float]],
-        tuple[torch.Tensor, torch.Tensor],
-    ],
+    pointwise_forward: tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, dict[str, float]]
+    | tuple[torch.Tensor, torch.Tensor],
     constants: dict[str, float] = {},
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     num_states = states.shape[0]
     sequence_dim = x.shape[0]
-    num_gates_r = (
-        R.shape[1] // R.shape[2]
-    )  # this only works for a fully-connected RNN, for a hin change this
+    num_gates_r = R.shape[1] // R.shape[2]  # this only works for a fully-connected RNN, for a hin change this
     hidden_dim = R.shape[2] * R.shape[0]
     num_gates_t = b.shape[0] // hidden_dim
     batch_dim = x.shape[1]
@@ -55,11 +51,7 @@ def slstm_forward(
         Ry = (
             states[0]
             .reshape(batch_dim, num_heads, 1, -1)
-            .matmul(
-                R.transpose(1, 2).reshape(
-                    1, num_heads, head_dim, num_gates_r * head_dim
-                )
-            )
+            .matmul(R.transpose(1, 2).reshape(1, num_heads, head_dim, num_gates_r * head_dim))
             .reshape(batch_dim, num_heads, num_gates_r, -1)
             .transpose(1, 2)
             .reshape(batch_dim, -1)
@@ -79,17 +71,13 @@ def slstm_forward_step(
     states: torch.Tensor,  # [4, B, H] only the first is used for recurrence!
     R: torch.Tensor,  # [K, R*H, H] - K num_heads
     b: torch.Tensor,  # [T*H]
-    pointwise_forward: Callable[
-        tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, dict[str, float]],
-        tuple[torch.Tensor, torch.Tensor],
-    ],
+    pointwise_forward: tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, dict[str, float]]
+    | tuple[torch.Tensor, torch.Tensor],
     constants: dict[str, float] = {},
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     num_states = states.shape[0]
     sequence_dim = x.shape[0]
-    num_gates_r = (
-        R.shape[1] // R.shape[2]
-    )  # this only works for a fully-connected RNN, for a hin change this
+    num_gates_r = R.shape[1] // R.shape[2]  # this only works for a fully-connected RNN, for a hin change this
     hidden_dim = R.shape[2] * R.shape[0]
     num_gates_t = b.shape[0] // hidden_dim
     batch_dim = x.shape[1]
@@ -114,9 +102,7 @@ def slstm_forward_step(
     Ry = (
         states[0]
         .reshape(batch_dim, num_heads, 1, -1)
-        .matmul(
-            R.transpose(1, 2).reshape(1, num_heads, head_dim, num_gates_r * head_dim)
-        )
+        .matmul(R.transpose(1, 2).reshape(1, num_heads, head_dim, num_gates_r * head_dim))
         .reshape(batch_dim, num_heads, num_gates_r, -1)
         .transpose(1, 2)
         .reshape(batch_dim, -1)

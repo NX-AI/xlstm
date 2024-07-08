@@ -7,10 +7,7 @@ from torch import nn
 
 from ...components.conv import CausalConv1d, CausalConv1dConfig
 from ...components.init import small_init_init_, wang_init_
-from ...components.linear_headwise import (
-    LinearHeadwiseExpand,
-    LinearHeadwiseExpandConfig,
-)
+from ...components.linear_headwise import LinearHeadwiseExpand, LinearHeadwiseExpandConfig
 from ...utils import UpProjConfigMixin
 from .cell import mLSTMCell, mLSTMCellConfig
 

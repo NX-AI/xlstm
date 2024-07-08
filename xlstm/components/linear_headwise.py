@@ -1,8 +1,8 @@
 # Copyright (c) NXAI GmbH and its affiliates 2024
 # Maximilian Beck, Korbininan Pöppel
 from dataclasses import dataclass
-
 from math import sqrt
+
 import torch
 
 # from einops import einsum, rearrange
@@ -31,9 +31,7 @@ class LinearHeadwiseExpandConfig:
     def __post_init__(self):
         assert self.num_heads > 0, "num_heads must be set"
         assert self.num_heads <= self.in_features, "num_heads must be <= in_features"
-        assert (
-            self.in_features % self.num_heads == 0
-        ), "in_features must be a multiple of num_heads"
+        assert self.in_features % self.num_heads == 0, "in_features must be a multiple of num_heads"
 
         if self._out_features < 0:
             self._out_features = round(self.expand_factor_up * self.in_features)
@@ -57,18 +55,14 @@ class LinearHeadwiseExpand(nn.Module):
             requires_grad=config.trainable_weight,
         )
         if config.bias:
-            self.bias = nn.Parameter(
-                torch.empty(config._out_features), requires_grad=config.trainable_bias
-            )
+            self.bias = nn.Parameter(torch.empty(config._out_features), requires_grad=config.trainable_bias)
         else:
             self.bias = None
         self.reset_parameters()
 
     def reset_parameters(self, **kwargs):
         # small init
-        nn.init.normal_(
-            self.weight.data, mean=0.0, std=sqrt(2 / 5 / self.weight.shape[-1])
-        )
+        nn.init.normal_(self.weight.data, mean=0.0, std=sqrt(2 / 5 / self.weight.shape[-1]))
         if self.bias is not None:
             nn.init.zeros_(self.bias.data)
 

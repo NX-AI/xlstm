@@ -2,7 +2,6 @@
 # Korbininan Pöppel
 
 from dataclasses import dataclass, field
-from typing import Optional
 
 from ...components.feedforward import FeedForwardConfig
 from ..xlstm_block import xLSTMBlock, xLSTMBlockConfig
@@ -12,7 +11,7 @@ from .layer import sLSTMLayerConfig
 @dataclass
 class sLSTMBlockConfig:
     slstm: sLSTMLayerConfig = field(default_factory=sLSTMLayerConfig)
-    feedforward: Optional[FeedForwardConfig] = field(default_factory=FeedForwardConfig)
+    feedforward: FeedForwardConfig | None = field(default_factory=FeedForwardConfig)
 
     # we initialize these with None to catch the case where they are not set
     _num_blocks: int = None

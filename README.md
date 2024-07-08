@@ -7,19 +7,19 @@
 ## About
 
 xLSTM is a new Recurrent Neural Network architecture based on ideas of the original LSTM.
-Through Exponential Gating with appropriate normalization and stabilization techniques and a new Matrix Memory it overcomes the limitations of the original LSTM 
+Through Exponential Gating with appropriate normalization and stabilization techniques and a new Matrix Memory it overcomes the limitations of the original LSTM
 and shows promising performance on Language Modeling when compared to Transformers or State Space Models.
 
 ## Minimal Installation
 
 Create a conda environment from the file `environment_pt220cu121.yaml`.
-Install the model code only (i.e. the module `xlstm`) as package:
+Install the model code only (that is the module `xlstm`) as package:
 
-Instally via pip: 
+Install by way of pip:
 ```bash
 pip install xlstm
 ```
-Clone from github:
+Clone from GitHub:
 ```bash
 git clone https://github.com/NX-AI/xlstm.git
 cd xlstm
@@ -32,7 +32,7 @@ This package is based on PyTorch and was tested for versions `>=1.8`. For the CU
 ```bash
 conda env create -n xlstm -f environment_pt220cu121.yaml
 conda activate xlstm
-``` 
+```
 
 ## Usage
 
@@ -93,7 +93,7 @@ from dacite import from_dict
 from dacite import Config as DaciteConfig
 from xlstm import xLSTMBlockStack, xLSTMBlockStackConfig
 
-xlstm_cfg = """ 
+xlstm_cfg = """
 mlstm_block:
   mlstm:
     conv1d_kernel_size: 4
@@ -135,7 +135,7 @@ from dacite import from_dict
 from dacite import Config as DaciteConfig
 from xlstm import xLSTMLMModel, xLSTMLMModelConfig
 
-xlstm_cfg = """ 
+xlstm_cfg = """
 vocab_size: 50304
 mlstm_block:
   mlstm:
@@ -169,7 +169,7 @@ y.shape[1:] == (256, 50304)
 
 ## Experiments
 
-The synthetic experiments show-casing the benefits of sLSTM over mLSTM and vice versa best are the Parity task and the Multi-Query Associative Recall task. The Parity task can only be solved with state-tracking capabilities provided by the memory-mixing of sLSTM. The Multi-Query Associative Recall task measures memorization capabilities, where the matrix-memory and state expansion of mLSTM is very beneficial.
+The synthetic experiments show-casing the benefits of sLSTM over mLSTM and the other way around best are the Parity task and the Multi-Query Associative Recall task. The Parity task can only be solved with state-tracking capabilities provided by the memory-mixing of sLSTM. The Multi-Query Associative Recall task measures memorization capabilities, where the matrix-memory and state expansion of mLSTM is very beneficial.
 In combination they do well on both tasks.
 
 To run each, run the `main.py` in the experiments folder like:

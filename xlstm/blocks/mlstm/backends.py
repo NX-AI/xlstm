@@ -152,9 +152,9 @@ def chunkwise_simple(
     values: torch.Tensor,  # B, NH, S, DH
     igate_preact: torch.Tensor,  # B, NH, S
     fgate_preact: torch.Tensor,  # B, NH, S
-    initial_C: Optional[torch.Tensor] = None,  # B, NH, DH, DH
-    initial_n: Optional[torch.Tensor] = None,  # B, NH, DH
-    initial_m: Optional[torch.Tensor] = None,  # B, NH, 1
+    initial_C: torch.Tensor | None = None,  # B, NH, DH, DH
+    initial_n: torch.Tensor | None = None,  # B, NH, DH
+    initial_m: torch.Tensor | None = None,  # B, NH, 1
     chunk_size: int = 64,  # optimize this
     return_last_state: bool = False,
     eps: float = 1e-6,
@@ -175,9 +175,7 @@ def chunkwise_simple(
     igate_preact = igate_preact.view(B, NH, NS, CS)
 
     loggates = (igate_preact - log_fgates_acc)[:, :, :, :, None]
-    m_loc, _ = torch.max(
-        loggates + log_fgates_acc[:, :, :, -1, None, None], dim=3, keepdim=True
-    )
+    m_loc, _ = torch.max(loggates + log_fgates_acc[:, :, :, -1, None, None], dim=3, keepdim=True)
     loggates = loggates + log_fgates_acc[:, :, :, -1, None, None] - m_loc
 
     kv = k.transpose(-1, -2) @ (v * (loggates).exp())
@@ -199,21 +197,11 @@ def chunkwise_simple(
             m_loc[:, :, i - 1],
         )
         C[:, :, i] = (
-            C[:, :, i - 1].clone()
-            * (
-                log_fgates_acc[:, :, i - 1, -1, None, None]
-                + m[:, :, i - 1]
-                - m[:, :, i]
-            ).exp()
+            C[:, :, i - 1].clone() * (log_fgates_acc[:, :, i - 1, -1, None, None] + m[:, :, i - 1] - m[:, :, i]).exp()
             + kv[:, :, i - 1] * (m_loc[:, :, i - 1] - m[:, :, i]).exp()
         )
         n[:, :, i] = (
-            n[:, :, i - 1].clone()
-            * (
-                log_fgates_acc[:, :, i - 1, -1, None]
-                + m[:, :, i - 1, 0]
-                - m[:, :, i, 0]
-            ).exp()
+            n[:, :, i - 1].clone() * (log_fgates_acc[:, :, i - 1, -1, None] + m[:, :, i - 1, 0] - m[:, :, i, 0]).exp()
             + ksum[:, :, i - 1] * (m_loc[:, :, i - 1, 0] - m[:, :, i, 0]).exp()
         )
 
@@ -225,18 +213,12 @@ def chunkwise_simple(
     )
 
     # gate decay matrix D (combination of forget gate and input gate)
-    log_D_matrix = log_fg_matrix + igate_preact[:, :, :, :, None].transpose(
-        -2, -1
-    )  # (B, NH, NS, CS, CS)
+    log_D_matrix = log_fg_matrix + igate_preact[:, :, :, :, None].transpose(-2, -1)  # (B, NH, NS, CS, CS)
     D_max, _ = torch.max(log_D_matrix, dim=-1, keepdim=True)
 
     stab = torch.maximum(D_max, m[:, :, :-1, :] + log_fgates_acc[:, :, :, :, None])
-    inter_C = (
-        q * (m[:, :, :-1, :] + log_fgates_acc[:, :, :, :, None] - stab).exp()
-    ) @ C[:, :, :-1]
-    inter_n = (
-        q * (m[:, :, :-1, :] + log_fgates_acc[:, :, :, :, None] - stab).exp()
-    ) @ n[:, :, :-1, :, None]
+    inter_C = (q * (m[:, :, :-1, :] + log_fgates_acc[:, :, :, :, None] - stab).exp()) @ C[:, :, :-1]
+    inter_n = (q * (m[:, :, :-1, :] + log_fgates_acc[:, :, :, :, None] - stab).exp()) @ n[:, :, :-1, :, None]
 
     # D matrix stabilization
     log_D_matrix_stabilized = log_D_matrix - stab  # (B, NH, NS, CS, CS)
@@ -261,4 +243,3 @@ def chunkwise_simple(
         return (intra + inter).view((B, NH, S, DH)), (C[:, :, -1], n[:, :, -1], m[:, :, -1])
     else:
         return (intra + inter).view((B, NH, S, DH))
-

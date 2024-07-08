@@ -16,18 +16,64 @@ license = {file="LICENSE"}
 requires-python = ">=3.9"
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: GNU Affero General Public License v3",
+    "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
 ]
-keywords = ["LSTM", "Transformer", "Machine Learning", "Deep Learning", "State Space Models"]
+keywords = ["xLSTM", "LSTM", "Transformer", "Machine Learning", "Deep Learning", "State Space Models"]
 
+[project.urls]
+Homepage = "https://github.com/NX-AI/xlstm"
+Issues = "https://github.com/NX-AI/xlstm/issues"
 
 # [tool.setuptools]
 # include_package_data = true
 
 [tool.setuptools.package-data]
-"xlstm" = ["blocks/slstm/src/cuda/*.c", "blocks/slstm/src/cuda/*.cc", "blocks/slstm/src/cuda/*.h", "blocks/slstm/src/cuda/*.cu", "blocks/slstm/src/cuda/*.cuh", "blocks/slstm/src/util/*.c", "blocks/slstm/src/util/*.cc", "blocks/slstm/src/util/*.h", "blocks/slstm/src/util/*.cu", "blocks/slstm/src/util/*.cuh"]
+"xlstm" = [
+    "blocks/slstm/src/cuda/*.c",
+    "blocks/slstm/src/cuda/*.cc",
+    "blocks/slstm/src/cuda/*.h",
+    "blocks/slstm/src/cuda/*.cu",
+    "blocks/slstm/src/cuda/*.cuh",
+    "blocks/slstm/src/util/*.c",
+    "blocks/slstm/src/util/*.cc",
+    "blocks/slstm/src/util/*.h",
+    "blocks/slstm/src/util/*.cu",
+    "blocks/slstm/src/util/*.cuh",
+]
 
-[project.urls]
-Repository = "https://github.com/NX-AI/xlstm"
-Issues = "https://github.com/NX-AI/xlstm/issues"
+# ruff
+[tool.ruff]
+exclude = [
+    ".eggs",
+    ".git",
+    ".ipynb_checkpoints",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".vscode",
+    "__pypackages__",
+    "_build",
+    "build",
+    "dist",
+    "node_modules",
+    "site-packages",
+    "archive",
+]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["I001"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 18
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+section-order = ["future", "standard-library", "third-party", "first-party", "xlstm", "local-folder"]
+
+[tool.ruff.lint.isort.sections]
+"xlstm" = ["xlstm"]
+
+[tool.ruff.format]
+quote-style = "double"

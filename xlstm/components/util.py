@@ -1,7 +1,8 @@
 # Copyright (c) NXAI GmbH and its affiliates 2024
 # Korbininan Pöppel
+from collections.abc import Callable
+
 import torch
-from typing import Callable
 
 
 def round_to_multiple(n, m=8):

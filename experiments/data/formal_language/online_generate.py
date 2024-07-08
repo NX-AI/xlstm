@@ -7,7 +7,6 @@ from . import generate
 
 
 class OnlineTaskGenerate(Dataset):
-
     def __init__(self, seed, generate_kwargs):
         self._generate_kwargs = generate_kwargs
         self._count = generate_kwargs["count"]
@@ -18,7 +17,9 @@ class OnlineTaskGenerate(Dataset):
 
     def __getitem__(self, index):
         seed = self.base_seed + index
-        batch, batch_mask = generate.GEN_FUNCS[self._generate_kwargs["synth_lang_type"]](seed=seed, **self._generate_kwargs)
+        batch, batch_mask = generate.GEN_FUNCS[self._generate_kwargs["synth_lang_type"]](
+            seed=seed, **self._generate_kwargs
+        )
         assert batch.shape[0] == 1  # Currently one element per generation
         return batch[0], batch_mask[0]
 
