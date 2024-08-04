@@ -13,6 +13,9 @@ dependencies:
   - pytorch=2.2.0
   - pytorch-cuda=12.1
   - cmake #=3.28.2
+  - ninja
+  - cuda-toolkit=12.1
+  - cuda-cccl=12.1
   - pip:
       - pre-commit #==3.6.0
       - ipykernel #==6.29.0
@@ -22,4 +25,4 @@ dependencies:
       - tqdm #==4.66.1
       - pytest #==8.0.0
       - pytest-xdist #==3.5.0
-      - numpy #==1.26.4
+      - numpy<2.0 #==1.26.4
