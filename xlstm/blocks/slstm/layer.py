@@ -110,7 +110,7 @@ class sLSTMLayer(nn.Module):
             self.ogate(x),
         )
 
-        y, last_state = self.slstm_cell(
+        y, slstm_state = self.slstm_cell(
             torch.cat([i, f, z, o], dim=-1), state=slstm_state
         )
 
@@ -118,7 +118,7 @@ class sLSTMLayer(nn.Module):
 
         out = self.group_norm(y).transpose(1, 2).view(B, S, -1)
 
-        return out, last_state
+        return out, {"conv_state": conv_state, "slstm_state": slstm_state}
 
     def forward(
         self,
