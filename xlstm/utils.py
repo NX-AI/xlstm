@@ -85,12 +85,12 @@ class WeightDecayOptimGroupMixin(nn.Module, ABC):
         no_decay = set()
         for name, param in self.named_parameters():
             if param.requires_grad:
-                if param.ndim > 1:
+                # TODO: this is a hack based on module naming. It fixes the issue with the previous heuristic using
+                #  parameter dim, which fails for FSDP because it flattens parameters so ndim is always 1.
+                if 'weight' in name and 'norm' not in name:
                     decay.add(param)
-                elif param.ndim == 1:
-                    no_decay.add(param)
                 else:
-                    raise ValueError(f"Unsupported parameter shape: {param.shape}")
+                    no_decay.add(param)
 
         return tuple(decay), tuple(no_decay)
 
