@@ -14,8 +14,9 @@ class sLSTMBlockConfig:
     slstm: sLSTMLayerConfig = field(default_factory=sLSTMLayerConfig)
     feedforward: Optional[FeedForwardConfig] = field(default_factory=FeedForwardConfig)
 
-    _num_blocks: int = 1
-    _block_idx: int = 0
+    # we initialize these with None to catch the case where they are not set
+    _num_blocks: int = None
+    _block_idx: int = None
 
     def __post_init__(self):
         self.slstm._block_idx = self._block_idx

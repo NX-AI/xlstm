@@ -11,10 +11,6 @@ from ..components.ln import LayerNorm
 from .mlstm.layer import mLSTMLayer, mLSTMLayerConfig
 from .slstm.layer import sLSTMLayer, sLSTMLayerConfig
 
-"""An xLSTM block can be either an sLSTM Block or an mLSTM Block.
-
-It contains the pre-LayerNorms and the skip connections.
-"""
 
 
 @dataclass
@@ -23,9 +19,10 @@ class xLSTMBlockConfig:
     slstm: Optional[sLSTMLayerConfig] = None
 
     feedforward: Optional[FeedForwardConfig] = None
-
-    _num_blocks: int = 1
-    _block_idx: int = 0
+    
+    # we initialize these with None to catch the case where they are not set
+    _num_blocks: int = None
+    _block_idx: int = None
 
     def __post_init__(self):
         assert self.mlstm is not None or self.slstm is not None, "Either mlstm or slstm must be provided"
@@ -44,6 +41,10 @@ class xLSTMBlockConfig:
 
 
 class xLSTMBlock(nn.Module):
+    """An xLSTM block can be either an sLSTM Block or an mLSTM Block.
+
+    It contains the pre-LayerNorms and the skip connections.
+    """
 
     config_class = xLSTMBlockConfig
 
