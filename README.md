@@ -184,7 +184,7 @@ Note that the training loop does not contain early stopping or test evaluation.
 
 ## Citation
 
-If you use this codebase, or otherwise find our work valuable, pleace cite the xLSTM paper:
+If you use this codebase, or otherwise find our work valuable, please cite the xLSTM paper:
 ```
 @article{xlstm,
   title={xLSTM: Extended Long Short-Term Memory},
