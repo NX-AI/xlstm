@@ -13,7 +13,7 @@ authors = [
 description = "A novel LSTM variant with promising performance compared to Transformers or State Space Models."
 readme = "README.md"
 license = {file="LICENSE"}
-requires-python = ">=3.10"
+requires-python = ">=3.9"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: GNU Affero General Public License v3",
