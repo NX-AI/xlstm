@@ -1,6 +1,7 @@
 # Copyright (c) NXAI GmbH and its affiliates 2024
 # Maximilian Beck, Korbinian Pöppel
 import math
+from typing import Optional
 
 import torch
 
