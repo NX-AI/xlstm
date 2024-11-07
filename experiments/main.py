@@ -6,17 +6,16 @@ from typing import Type
 import torch
 import torch.optim as optim
 from dacite import from_dict
-from experiments.data.formal_language.formal_language_dataset import (
-    FormLangDatasetGenerator,
-)
-from experiments.data.utils import DataGen
-from experiments.lr_scheduler import LinearWarmupCosineAnnealing
 from omegaconf import DictConfig, OmegaConf
 from torch import nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-
 from xlstm.xlstm_lm_model import xLSTMLMModel, xLSTMLMModelConfig
+
+from data.formal_language.formal_language_dataset import \
+    FormLangDatasetGenerator
+from data.utils import DataGen
+from lr_scheduler import LinearWarmupCosineAnnealing
 
 dataset_registry: dict[str, Type[DataGen]] = {
     "form_language": FormLangDatasetGenerator
