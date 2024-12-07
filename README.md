@@ -15,7 +15,7 @@ and shows promising performance on Language Modeling when compared to Transforme
 Create a conda environment from the file `environment_pt220cu121.yaml`.
 Install the model code only (i.e. the module `xlstm`) as package:
 
-Instally via pip: 
+Install via pip: 
 ```bash
 pip install xlstm
 ```
@@ -33,6 +33,30 @@ This package is based on PyTorch and was tested for versions `>=1.8`. For the CU
 conda env create -n xlstm -f environment_pt220cu121.yaml
 conda activate xlstm
 ``` 
+
+For the xLSTM Large 7B model we require our `mlstm_kernels` (TODO add github link) package, which provides fast kernels for the xLSTM.
+
+# xLSTM Large 7B (December 2024)
+
+:rotating_light: We trained a 7B parameter xLSTM Language Model :rotating_light:
+
+For this we have optimized the xLSTM architecture in terms of training throughput and stability. 
+The code for the updated architecture is located in `xlstm/xlstm_large`.
+
+
+
+The model weights are available on HuggingFace.
+You can load the weights with this code: 
+
+TODO how to download the models and load them with this code
+
+...or directly via Huggingface:
+
+TODO how to use the huggingface code.
+
+# Models from the xLSTM Paper
+
+This section explains how to use the models from the xLSTM paper.
 
 ## Usage
 
@@ -186,11 +210,12 @@ Note that the training loop does not contain early stopping or test evaluation.
 
 If you use this codebase, or otherwise find our work valuable, please cite the xLSTM paper:
 ```
-@article{xlstm,
-  title={xLSTM: Extended Long Short-Term Memory},
-  author={Beck, Maximilian and P{\"o}ppel, Korbinian and Spanring, Markus and Auer, Andreas and Prudnikova, Oleksandra and Kopp, Michael and Klambauer, G{\"u}nter and Brandstetter, Johannes and Hochreiter, Sepp},
-  journal={arXiv preprint arXiv:2405.04517},
-  year={2024}
+@inproceedings{beck:24xlstm,
+      title={xLSTM: Extended Long Short-Term Memory}, 
+      author={Maximilian Beck and Korbinian Pöppel and Markus Spanring and Andreas Auer and Oleksandra Prudnikova and Michael Kopp and Günter Klambauer and Johannes Brandstetter and Sepp Hochreiter},
+      booktitle = {Thirty-eighth Conference on Neural Information Processing Systems},
+      year={2024},
+      url={https://arxiv.org/abs/2405.04517}, 
 }
 
 ```
