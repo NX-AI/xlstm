@@ -1,26 +1,21 @@
 # Copyright (c) NXAI GmbH and its affiliates 2024
 # Korbininan Pöppel
 from dataclasses import dataclass
-from typing import Optional
+
 import torch
-from ...components.ln import MultiHeadLayerNorm
-from ...components.linear_headwise import (
-    LinearHeadwiseExpand,
-    LinearHeadwiseExpandConfig,
-)
+from torch import nn
+
 from ...components.conv import CausalConv1d, CausalConv1dConfig
 from ...components.init import small_init_init_
-
-from torch import nn
+from ...components.linear_headwise import LinearHeadwiseExpand, LinearHeadwiseExpandConfig
+from ...components.ln import MultiHeadLayerNorm
 from .cell import sLSTMCell, sLSTMCellConfig
 
 
 @dataclass
 class sLSTMLayerConfig(sLSTMCellConfig):
     embedding_dim: int = -1
-    num_heads: int = (
-        4  # this must divide the hidden size, is not yet supported by all versions in this directory
-    )
+    num_heads: int = 4  # this must divide the hidden size, is not yet supported by all versions in this directory
     conv1d_kernel_size: int = 4  # 0 means no convolution included
     group_norm_weight: bool = True
     dropout: float = 0.0
@@ -76,9 +71,7 @@ class sLSTMLayer(nn.Module):
         )
 
         self.slstm_cell = sLSTMCell(self.config)
-        self.group_norm = MultiHeadLayerNorm(
-            ndim=self.config.embedding_dim, weight=self.config.group_norm_weight
-        )
+        self.group_norm = MultiHeadLayerNorm(ndim=self.config.embedding_dim, weight=self.config.group_norm_weight)
         self.dropout = nn.Dropout(self.config.dropout)
 
     def reset_parameters(self):
@@ -92,8 +85,8 @@ class sLSTMLayer(nn.Module):
     def step(
         self,
         x: torch.Tensor,
-        conv_state: Optional[torch.Tensor] = None,
-        slstm_state: Optional[torch.Tensor] = None,
+        conv_state: torch.Tensor | None = None,
+        slstm_state: torch.Tensor | None = None,
     ):
         B, S, _ = x.shape
 
@@ -110,9 +103,7 @@ class sLSTMLayer(nn.Module):
             self.ogate(x),
         )
 
-        y, slstm_state = self.slstm_cell(
-            torch.cat([i, f, z, o], dim=-1), state=slstm_state
-        )
+        y, slstm_state = self.slstm_cell(torch.cat([i, f, z, o], dim=-1), state=slstm_state)
 
         y = self.dropout(y)
 
@@ -123,8 +114,8 @@ class sLSTMLayer(nn.Module):
     def forward(
         self,
         x: torch.Tensor,
-        conv_state: Optional[torch.Tensor] = None,
-        slstm_state: Optional[torch.Tensor] = None,
+        conv_state: torch.Tensor | None = None,
+        slstm_state: torch.Tensor | None = None,
         return_last_state=False,
         **kwargs,
     ) -> torch.Tensor:
@@ -132,9 +123,7 @@ class sLSTMLayer(nn.Module):
 
         if self.config.conv1d_kernel_size > 0:
             if return_last_state:
-                x_conv, conv_state = self.conv1d(
-                    x, conv_state, return_last_state=return_last_state
-                )
+                x_conv, conv_state = self.conv1d(x, conv_state, return_last_state=return_last_state)
             else:
                 x_conv = self.conv1d(x, conv_state, return_last_state=return_last_state)
             x_conv = self.conv_act_fn(x_conv)
@@ -148,9 +137,7 @@ class sLSTMLayer(nn.Module):
             self.ogate(x),
         )
 
-        y, slstm_state = self.slstm_cell(
-            torch.cat([i, f, z, o], dim=-1), state=slstm_state
-        )
+        y, slstm_state = self.slstm_cell(torch.cat([i, f, z, o], dim=-1), state=slstm_state)
 
         y = self.dropout(y)
 

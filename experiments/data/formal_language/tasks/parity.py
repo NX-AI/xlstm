@@ -1,6 +1,5 @@
 # Copyright (c) NXAI GmbH and its affiliates 2024
 # Korbinian Pöppel, Andreas Auer
-from typing import Optional
 
 import numpy as np
 
@@ -10,14 +9,11 @@ def parity(
     *,
     batch_size: int = 1,
     vocab_size: int = 3,
-    min_sequence_length: Optional[int] = None,
-    max_sequence_length: Optional[int] = None,
+    min_sequence_length: int | None = None,
+    max_sequence_length: int | None = None,
     context_length: int = 20,
-    pad_idx: int = 0,
     seed: int = 42,
-    **kwargs
 ):
-    vocab = np.arange(0, vocab_size - 1)
     rng = np.random.default_rng(seed)
 
     max_sequence_length = context_length if max_sequence_length is None else max_sequence_length
@@ -34,5 +30,3 @@ def parity(
         prediction_mask[batch_idx, sizes[batch_idx] - 1 : sizes[batch_idx]] = 1
 
     return res, prediction_mask
-
-

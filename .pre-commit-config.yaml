@@ -1,0 +1,55 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v5.0.0
+  hooks:
+  - id: check-added-large-files
+  - id: check-case-conflict
+  - id: check-docstring-first
+  - id: check-executables-have-shebangs
+  - id: check-json
+  - id: check-shebang-scripts-are-executable
+  - id: check-merge-conflict
+  - id: check-symlinks
+  - id: check-toml
+  - id: check-yaml
+  - id: debug-statements
+  - id: detect-private-key
+  - id: end-of-file-fixer
+  - id: mixed-line-ending
+  - id: pretty-format-json
+    args: [ --autofix, --no-sort-keys ]
+  - id: name-tests-test
+    args: [ --pytest-test-first ]
+    exclude: ^tests/trainer/helpers/
+  - id: no-commit-to-branch
+  - id: trailing-whitespace
+- repo: https://github.com/asottile/setup-cfg-fmt
+  rev: v2.7.0
+  hooks:
+  - id: setup-cfg-fmt
+- repo: https://github.com/asottile/pyupgrade
+  rev: v3.19.0
+  hooks:
+  - id: pyupgrade
+    args: [ --py311-plus ]
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  rev: v0.7.3
+  hooks:
+  - id: ruff
+    types_or: [ python, pyi, jupyter ]
+    args: [ --fix ]
+  - id: ruff-format
+    types_or: [ python, pyi, jupyter ]
+- repo: https://github.com/compilerla/conventional-pre-commit
+  rev: v3.6.0
+  hooks:
+    - id: conventional-pre-commit
+      stages: [ commit-msg ]
+      args: [ --strict, --force-scope, chore, ci, docs, feat, fix, test ]
+- repo: https://github.com/google/pre-commit-tool-hooks
+  rev: v1.2.5
+  hooks:
+    - id: check-google-doc-style
+    - id: check-links

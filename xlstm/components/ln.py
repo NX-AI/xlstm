@@ -49,7 +49,6 @@ class LayerNorm(nn.Module):
 
 
 class MultiHeadLayerNorm(LayerNorm):
-
     def forward(self, input: torch.Tensor) -> torch.Tensor:
         assert input.dim() == 4, "Input must be 4D tensor (B, NH, S, DH)"
         B, NH, S, DH = input.shape

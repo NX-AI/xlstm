@@ -1,7 +1,6 @@
 # Copyright (c) NXAI GmbH and its affiliates 2024
 # Maximilian Beck, Korbinian Pöppel
 from dataclasses import dataclass, field
-from typing import Optional
 
 import torch
 
@@ -77,9 +76,7 @@ class CausalConv1d(nn.Module):
         if self.config.kernel_size == 0:
             self.conv = None  # Noop
         else:
-            self.pad = (
-                self.config.kernel_size - 1
-            )  # padding of this size assures temporal causality.
+            self.pad = self.config.kernel_size - 1  # padding of this size assures temporal causality.
             self.conv = nn.Conv1d(
                 in_channels=self.config.feature_dim,
                 out_channels=self.config.feature_dim,
@@ -110,7 +107,7 @@ class CausalConv1d(nn.Module):
     def forward(
         self,
         x: torch.Tensor,
-        conv_state: Optional[torch.Tensor] = None,
+        conv_state: torch.Tensor | None = None,
         return_last_state: bool = False,
     ) -> torch.Tensor:
         if conv_state is not None:
@@ -133,7 +130,6 @@ class CausalConv1d(nn.Module):
         x: torch.Tensor,
         conv_state: tuple[torch.Tensor] = None,
     ) -> tuple[torch.Tensor, tuple[torch.Tensor]]:
-
         if self.config.kernel_size == 0:
             return x, conv_state
 

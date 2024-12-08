@@ -1,26 +1,22 @@
 # Copyright (c) NXAI GmbH and its affiliates 2024
 # Korbinian Poeppel, Maximilian Beck
 from argparse import ArgumentParser
-from typing import Type
 
 import torch
 import torch.optim as optim
 from dacite import from_dict
-from experiments.data.formal_language.formal_language_dataset import (
-    FormLangDatasetGenerator,
-)
-from experiments.data.utils import DataGen
-from experiments.lr_scheduler import LinearWarmupCosineAnnealing
 from omegaconf import DictConfig, OmegaConf
 from torch import nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+from experiments.data.formal_language.formal_language_dataset import FormLangDatasetGenerator
+from experiments.data.utils import DataGen
+from experiments.lr_scheduler import LinearWarmupCosineAnnealing
+
 from xlstm.xlstm_lm_model import xLSTMLMModel, xLSTMLMModelConfig
 
-dataset_registry: dict[str, Type[DataGen]] = {
-    "form_language": FormLangDatasetGenerator
-}
+dataset_registry: dict[str, type[DataGen]] = {"form_language": FormLangDatasetGenerator}
 
 torch_dtype_map: dict[str, torch.dtype] = {
     "float32": torch.float32,
@@ -90,7 +86,6 @@ def main(cfg: DictConfig):
                 dtype=torch_dtype_map[cfg.training.amp_precision],
                 enabled=cfg.training.enable_mixed_precision,
             ):
-
                 outputs = model(inputs.to(device=cfg.training.device))
                 loss = nn.functional.cross_entropy(
                     outputs.view(-1, cfg.model.vocab_size),
@@ -142,13 +137,12 @@ def main(cfg: DictConfig):
 
 
 if __name__ == "__main__":
-
     parser = ArgumentParser()
     parser.add_argument("--config", default="parity_xlstm11")
 
     args = parser.parse_args()
 
-    with open(args.config, "r", encoding="utf8") as fp:
+    with open(args.config, encoding="utf8") as fp:
         config_yaml = fp.read()
     cfg = OmegaConf.create(config_yaml)
     OmegaConf.resolve(cfg)

@@ -1,7 +1,13 @@
 # Copyright (c) NXAI GmbH and its affiliates 2024
 # Maximilian Beck
+"""
+An xLSTM block can be either an sLSTM Block or an mLSTM Block.
+It contains the pre-LayerNorms and the skip connections.
+"""
+
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Optional
 
 import torch
 from torch import nn
@@ -12,14 +18,11 @@ from .mlstm.layer import mLSTMLayer, mLSTMLayerConfig
 from .slstm.layer import sLSTMLayer, sLSTMLayerConfig
 
 
-
 @dataclass
 class xLSTMBlockConfig:
-    mlstm: Optional[mLSTMLayerConfig] = None
-    slstm: Optional[sLSTMLayerConfig] = None
-
-    feedforward: Optional[FeedForwardConfig] = None
-    
+    mlstm: mLSTMLayerConfig | None = None
+    slstm: sLSTMLayerConfig | None = None
+    feedforward: FeedForwardConfig | None = None
     # we initialize these with None to catch the case where they are not set
     _num_blocks: int = None
     _block_idx: int = None

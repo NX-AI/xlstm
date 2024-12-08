@@ -56,7 +56,7 @@ class mLSTMCell(nn.Module):
         igate_preact = self.igate(if_gate_input)  # (B, S, NH)
         igate_preact = igate_preact.transpose(-1, -2).unsqueeze(-1)  # (B, NH, S, 1)
         fgate_preact = self.fgate(if_gate_input)  # (B, S, NH)
-        fgate_preact = fgate_preact.transpose(-1, -2).unsqueeze(-1)  # (B, NH, S, 1)#
+        fgate_preact = fgate_preact.transpose(-1, -2).unsqueeze(-1)  # (B, NH, S, 1)
 
         h_state = self.backend_fn(
             queries=q,
@@ -78,7 +78,6 @@ class mLSTMCell(nn.Module):
         k: torch.Tensor,
         v: torch.Tensor,
         mlstm_state: tuple[torch.Tensor, torch.Tensor, torch.Tensor] = None,
-        **kwargs,
     ) -> tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
         B, S, _ = q.shape  # (B, S, H)
         assert S == 1, f"mLSTMCell.step only supports sequence length S=1, but got S={S}."

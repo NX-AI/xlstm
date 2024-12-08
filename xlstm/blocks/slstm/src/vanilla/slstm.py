@@ -34,6 +34,4 @@ def slstm_forward_pointwise(
     ynew = ogate * cnew / nnew
 
     # shapes ([B,H], [B,H], [B,H]), ([B,H],[B,H],[B,H],[B,H])
-    return torch.stack((ynew, cnew, nnew, mnew), dim=0), torch.stack(
-        (igate, fgate, zraw, ogate), dim=0
-    )
+    return torch.stack((ynew, cnew, nnew, mnew), dim=0), torch.stack((igate, fgate, zraw, ogate), dim=0)

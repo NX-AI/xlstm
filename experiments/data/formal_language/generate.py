@@ -4,10 +4,10 @@ import inspect
 
 import numpy as np
 
-from .tasks.parity import parity
 from .tasks.cycle_navigation import cycle_navigation
 from .tasks.even_pairs import even_pairs
 from .tasks.modular_arithmetic import modular_arithmetic
+from .tasks.parity import parity
 
 GEN_FUNCS = {
     "parity": parity,

@@ -1,13 +1,13 @@
 # Copyright (c) NXAI GmbH and its affiliates 2024
 # Andreas Auer, Maximilian Beck
-from abc import abstractmethod
-from typing import Tuple, Any, Optional, Mapping
-
 import hashlib
 import json
 import os
+from abc import abstractmethod
+from collections.abc import Mapping
 from dataclasses import asdict
 from pathlib import Path
+from typing import Any
 
 import torch
 import torchmetrics
@@ -15,7 +15,6 @@ from torch.utils.data import TensorDataset
 
 
 class DataGen:
-
     @property
     @abstractmethod
     def train_split(self) -> torch.utils.data.Dataset:
@@ -36,15 +35,15 @@ class DataGen:
     def validation_metrics(self) -> torchmetrics.MetricCollection:
         pass
 
-class SequenceTensorDataset(TensorDataset):
 
-    def __init__(self, tensors: Tuple[Any, Any], vocab_size: int, context_length: int) -> None:
+class SequenceTensorDataset(TensorDataset):
+    def __init__(self, tensors: tuple[Any, Any], vocab_size: int, context_length: int) -> None:
         super().__init__(*tensors)
         self._vocab_size = vocab_size
         self._context_length = context_length
 
     @property
-    def vocab_size(self) -> Optional[int]:
+    def vocab_size(self) -> int | None:
         return self._vocab_size
 
     @property
@@ -53,7 +52,6 @@ class SequenceTensorDataset(TensorDataset):
 
 
 class CacheMixin:
-
     @staticmethod
     def check_exist(config, directory: Path, check_existing: bool):
         if directory is not None and os.path.exists(str(directory / "config.json")):
@@ -99,4 +97,3 @@ def calc_joint_md5sum(dir_path, exclude=[]):
                 file_data = f.read()
                 md5.update(file_data)
     return md5.hexdigest()
-

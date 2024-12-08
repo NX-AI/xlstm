@@ -2,7 +2,7 @@
 # Maximilian Beck
 from copy import deepcopy
 from dataclasses import dataclass, field
-from typing import Literal, Optional, Union
+from typing import Literal
 
 import torch
 from torch import nn
@@ -14,8 +14,8 @@ from .components.ln import LayerNorm
 
 @dataclass
 class xLSTMBlockStackConfig:
-    mlstm_block: Optional[mLSTMBlockConfig] = None
-    slstm_block: Optional[sLSTMBlockConfig] = None
+    mlstm_block: mLSTMBlockConfig | None = None
+    slstm_block: sLSTMBlockConfig | None = None
 
     context_length: int = -1
     num_blocks: int = 1
@@ -26,7 +26,7 @@ class xLSTMBlockStackConfig:
 
     # The block indices at which sLSTM blocks are placed.
     # Indexing starts from 0.
-    slstm_at: Union[list[int], Literal["all"]] = field(default_factory=list)
+    slstm_at: list[int] | Literal["all"] = field(default_factory=list)
 
     # _block_map is a string that specifies which block is used at which position
     # 0: use the mLSTM block
@@ -60,7 +60,6 @@ class xLSTMBlockStackConfig:
             self.mlstm_block.mlstm.bias = self.bias
             self.mlstm_block.mlstm.dropout = self.dropout
             self.mlstm_block.mlstm.context_length = self.context_length
-            
             self.mlstm_block._num_blocks = self.num_blocks
             # call post init, for setting inner_embedding_dim
             self.mlstm_block.__post_init__()
@@ -88,7 +87,6 @@ class xLSTMBlockStack(nn.Module):
             self.post_blocks_norm = nn.Identity()
 
     def _create_blocks(self, config: xLSTMBlockStackConfig):
-
         blocks = []
         for block_idx, block_type_int in enumerate(config.block_map):
             if block_type_int == 0:
@@ -115,7 +113,6 @@ class xLSTMBlockStack(nn.Module):
             self.post_blocks_norm.reset_parameters()
 
     def forward(self, x: torch.Tensor, **kwargs) -> torch.Tensor:
-
         for block in self.blocks:
             x = block(x, **kwargs)
 
