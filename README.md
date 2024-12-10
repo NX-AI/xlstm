@@ -10,6 +10,17 @@ xLSTM is a new Recurrent Neural Network architecture based on ideas of the origi
 Through Exponential Gating with appropriate normalization and stabilization techniques and a new Matrix Memory it overcomes the limitations of the original LSTM 
 and shows promising performance on Language Modeling when compared to Transformers or State Space Models.
 
+# xLSTM Large 7B
+
+:rotating_light: We trained a 7B parameter xLSTM Language Model :rotating_light:
+
+![xLSTM Figure](./res/xlstm_7b_poster.svg)
+
+We have optimized the xLSTM architecture in terms of training throughput and stability. 
+The code for the updated architecture is located in `xlstm/xlstm_large`.
+
+The model weights are available on Huggingface at https://huggingface.co/NX-AI/xLSTM-7b. 
+
 ## Minimal Installation
 
 Create a conda environment from the file `environment_pt220cu121.yaml`.
@@ -26,6 +37,11 @@ cd xlstm
 pip install -e .
 ```
 
+For using the 7B xLSTM model install `mlstm_kernels` via:
+``` 
+pip install mlstm_kernels
+```
+
 ## Requirements
 
 This package is based on PyTorch and was tested for versions `>=1.8`. For the CUDA version of sLSTM, you need Compute Capability >= 8.0, see [https://developer.nvidia.com/cuda-gpus](https://developer.nvidia.com/cuda-gpus). For a well-tested environment, install the `environment_pt220cu121.yaml` as:
@@ -36,23 +52,6 @@ conda activate xlstm
 
 For the xLSTM Large 7B model we require our `mlstm_kernels` (TODO add github link) package, which provides fast kernels for the xLSTM.
 
-# xLSTM Large 7B
-
-:rotating_light: We trained a 7B parameter xLSTM Language Model :rotating_light:
-
-![xLSTM Figure](./res/xlstm_7b_poster.svg)
-
-We have optimized the xLSTM architecture in terms of training throughput and stability. 
-The code for the updated architecture is located in `xlstm/xlstm_large`.
-
-The model weights are available on Huggingface at https://huggingface.co/NX-AI/xLSTM-7b. 
-
-### Installation
-
-For using the 7B xLSTM model install `mlstm_kernels` first via:
-``` 
-pip install mlstm_kernels
-```
 
 # Models from the xLSTM Paper
 
