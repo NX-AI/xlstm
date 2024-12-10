@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "xlstm"
-version = "1.0.8"
+version = "2.0.0"
 authors = [
   { name="Maximilian Beck", email="beck@ml.jku.at" },
   { name="Korbinian Poeppel", email="poeppel@ml.jku.at" },
@@ -16,7 +16,6 @@ license = {file="LICENSE"}
 requires-python = ">=3.9"
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: GNU Affero General Public License v3",
     "Operating System :: OS Independent",
 ]
 keywords = ["LSTM", "Transformer", "Machine Learning", "Deep Learning", "State Space Models"]
