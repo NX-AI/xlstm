@@ -36,23 +36,16 @@ conda activate xlstm
 
 For the xLSTM Large 7B model we require our `mlstm_kernels` (TODO add github link) package, which provides fast kernels for the xLSTM.
 
-# xLSTM Large 7B (December 2024)
+# xLSTM Large 7B
 
 :rotating_light: We trained a 7B parameter xLSTM Language Model :rotating_light:
 
-For this we have optimized the xLSTM architecture in terms of training throughput and stability. 
+![xLSTM Figure](./res/xlstm_7b_poster.svg)
+
+We have optimized the xLSTM architecture in terms of training throughput and stability. 
 The code for the updated architecture is located in `xlstm/xlstm_large`.
 
-
-
-The model weights are available on HuggingFace.
-You can load the weights with this code: 
-
-TODO how to download the models and load them with this code
-
-...or directly via Huggingface:
-
-TODO how to use the huggingface code.
+The model weights are available on Huggingface at https://huggingface.co/NX-AI/xLSTM-7b. 
 
 # Models from the xLSTM Paper
 
