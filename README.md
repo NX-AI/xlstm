@@ -47,6 +47,13 @@ The code for the updated architecture is located in `xlstm/xlstm_large`.
 
 The model weights are available on Huggingface at https://huggingface.co/NX-AI/xLSTM-7b. 
 
+### Installation
+
+For using the 7B xLSTM model install `mlstm_kernels` first via:
+``` 
+pip install mlstm_kernels
+```
+
 # Models from the xLSTM Paper
 
 This section explains how to use the models from the xLSTM paper.
