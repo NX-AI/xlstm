@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=42"]
+requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -19,6 +19,28 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 keywords = ["LSTM", "Transformer", "Machine Learning", "Deep Learning", "State Space Models"]
+dependencies = [
+    "torch",
+    "einops",
+    "numpy",
+    "omegaconf",
+    "einops",
+    "opt_einsum", 
+    "transformers",
+    "reportlab",
+    "joypy",
+    "ipykernel",
+    "dacite",
+    "ftfy", 
+    "ninja",
+    "huggingface-hub",
+    "rich",
+    "omegaconf",
+    "tokenizers",
+    "tqdm",
+    "seaborn",
+    "mlstm_kernels",
+]
 
 
 # [tool.setuptools]
