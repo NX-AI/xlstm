@@ -58,7 +58,7 @@ class xLSTMLargeConfig:
     Also supports fully parallel (i.e. quadratic) backends for comparison.
     E.g. 'parallel--native_autograd'.
     """
-    sequence_kernel: SequenceKernelType = "native_sequence__triton_step"
+    sequence_kernel: SequenceKernelType = "native_sequence__triton"
     """The sequence kernel to use for processing sequneces step-by-step.
     Used only for parts of the prefill sequence in inference mode.
     """
