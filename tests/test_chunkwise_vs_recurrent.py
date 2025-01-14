@@ -27,7 +27,7 @@ def test_recurrent_vs_chunkwise_native(
     "sequence_kernel_name, step_kernel_name",
     [
         ["native_sequence__native", "native"],
-        ["native_sequence__triton_step_fused", "triton_fused"],
+        ["native_sequence__triton", "triton"],
     ],
 )
 def test_recurrent_vs_chunkwise_triton(

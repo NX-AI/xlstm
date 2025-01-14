@@ -110,13 +110,13 @@ def test_generate_no_prefill(batch_size: int, prefill_length: int, max_length: i
     [
         [
             "chunkwise--triton_limit_chunk",
-            "native_sequence__triton_step_fused",
-            "triton_fused",
+            "native_sequence__triton",
+            "triton",
         ],
         [
             "chunkwise--triton_xl_chunk",
-            "native_sequence__triton_step_fused",
-            "triton_fused",
+            "native_sequence__triton",
+            "triton",
         ],
     ],
 )
@@ -150,13 +150,13 @@ def test_generate_prefill(
     [
         [
             "chunkwise--triton_limit_chunk",
-            "native_sequence__triton_step_fused",
-            "triton_fused",
+            "native_sequence__triton",
+            "triton",
         ],
         [
             "chunkwise--triton_xl_chunk",
-            "native_sequence__triton_step_fused",
-            "triton_fused",
+            "native_sequence__triton",
+            "triton",
         ],
     ],
 )
