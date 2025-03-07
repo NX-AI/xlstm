@@ -27,7 +27,7 @@ def defines_to_cflags(defines=Union[dict[str, Union[int, str]], Sequence[tuple[s
 curdir = os.path.dirname(__file__)
 
 if torch.cuda.is_available():
-    os.environ["CUDA_LIB"] = os.path.join(os.path.split(torch.utils.cpp_extension.include_paths(cuda=True)[-1])[0], "lib")
+    os.environ["CUDA_LIB"] = os.path.join(os.path.split(torch.utils.cpp_extension.include_paths(device_type='cuda')[-1])[0], "lib")
 
 
 def load(*, name, sources, extra_cflags=(), extra_cuda_cflags=(), **kwargs):
