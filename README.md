@@ -197,9 +197,9 @@ In combination they do well on both tasks.
 
 To run each, run the `main.py` in the experiments folder like:
 ```
-python experiments/main.py --config experiments/parity_xLSTM01.yaml   # xLSTM[0:1], sLSTM only
-python experiments/main.py --config experiments/parity_xLSTM10.yaml   # xLSTM[1:0], mLSTM only
-python experiments/main.py --config experiments/parity_xLSTM11.yaml   # xLSTM[1:1], mLSTM and sLSTM
+PYTHONPATH=. python experiments/main.py --config experiments/parity_xlstm01.yaml   # xLSTM[0:1], sLSTM only
+PYTHONPATH=. python experiments/main.py --config experiments/parity_xlstm10.yaml   # xLSTM[1:0], mLSTM only
+PYTHONPATH=. python experiments/main.py --config experiments/parity_xlstm11.yaml   # xLSTM[1:1], mLSTM and sLSTM
 ```
 
 Note that the training loop does not contain early stopping or test evaluation.
