@@ -36,13 +36,14 @@ if torch.cuda.is_available():
 
 EXTRA_INCLUDE_PATHS = ()
 if "CONDA_PREFIX" in os.environ:
+    # This enforces adding the correct include directory from the CUDA installation via torch. If you use the system 
+    # installation, you might have to add the cflags yourself.
     from pathlib import Path
     from packaging import version
     import sys
     import glob
     if version.parse(torch.__version__) >= version.parse("2.6.0"):
         matching_dirs = glob.glob(f"{os.environ['CONDA_PREFIX']}/targets/**", recursive=True)
-        # EXTRA_INCLUDE_PATHS = (os.path.join(os.environ['CONDA_PREFIX'], "lib", "python" + str(sys.version_info.major) + "." + str(sys.version_info.minor), 'site-packages', 'nvidia', "cuda_runtime", "include"),)
         EXTRA_INCLUDE_PATHS = tuple(map(str, (Path(os.environ["CONDA_PREFIX"]) / "targets").glob("**/include/")))[:1]
 
 def load(*, name, sources, extra_cflags=(), extra_cuda_cflags=(), **kwargs):
