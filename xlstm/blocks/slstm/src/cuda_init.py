@@ -28,23 +28,34 @@ curdir = os.path.dirname(__file__)
 
 if torch.cuda.is_available():
     from packaging import version
+
     if version.parse(torch.__version__) >= version.parse("2.6.0"):
-        os.environ["CUDA_LIB"] = os.path.join(os.path.split(torch.utils.cpp_extension.include_paths(device_type="cuda")[-1])[0], "lib")
+        os.environ["CUDA_LIB"] = os.path.join(
+            os.path.split(torch.utils.cpp_extension.include_paths(device_type="cuda")[-1])[0], "lib"
+        )
     else:
-        os.environ["CUDA_LIB"] = os.path.join(os.path.split(torch.utils.cpp_extension.include_paths(cuda=True)[-1])[0], "lib")
+        os.environ["CUDA_LIB"] = os.path.join(
+            os.path.split(torch.utils.cpp_extension.include_paths(cuda=True)[-1])[0], "lib"
+        )
 
 
-EXTRA_INCLUDE_PATHS = ()
+EXTRA_INCLUDE_PATHS = (
+    tuple(os.environ["XLSTM_EXTRA_INCLUDE_PATHS"].split(":")) if "XLSTM_EXTRA_INCLUDE_PATHS" in os.environ else ()
+)
 if "CONDA_PREFIX" in os.environ:
-    # This enforces adding the correct include directory from the CUDA installation via torch. If you use the system 
+    # This enforces adding the correct include directory from the CUDA installation via torch. If you use the system
     # installation, you might have to add the cflags yourself.
     from pathlib import Path
     from packaging import version
-    import sys
     import glob
+
     if version.parse(torch.__version__) >= version.parse("2.6.0"):
         matching_dirs = glob.glob(f"{os.environ['CONDA_PREFIX']}/targets/**", recursive=True)
-        EXTRA_INCLUDE_PATHS = tuple(map(str, (Path(os.environ["CONDA_PREFIX"]) / "targets").glob("**/include/")))[:1]
+        EXTRA_INCLUDE_PATHS = (
+            EXTRA_INCLUDE_PATHS
+            + tuple(map(str, (Path(os.environ["CONDA_PREFIX"]) / "targets").glob("**/include/")))[:1]
+        )
+
 
 def load(*, name, sources, extra_cflags=(), extra_cuda_cflags=(), **kwargs):
     suffix = ""

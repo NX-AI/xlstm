@@ -53,6 +53,23 @@ conda activate xlstm
 For the xLSTM Large 7B model we require our `mlstm_kernels` (TODO add github link) package, which provides fast kernels for the xLSTM.
 
 
+For all kinds of custom setups with torch and CUDA, keep in mind that versions have to match. Also, to make sure the correct CUDA libraries are included you can use the "XLSTM_EXTRA_INCLUDE_PATHS" environment variable now to inject different include paths, e.g.:
+
+```bash
+export XLSTM_EXTRA_INCLUDE_PATHS='/usr/local/include/cuda/:/usr/include/cuda/'
+```
+
+or within python:
+
+```python
+import os
+os.environ['XLSTM_EXTRA_INCLUDE_PATHS']='/usr/local/include/cuda/:/usr/include/cuda/'
+```
+
+for standalone, even faster sLSTM kernels, feel free to use the [FlashRNN](https://github.com/NX-AI/flashrnn) library.
+
+
+
 # Models from the xLSTM Paper
 
 This section explains how to use the models from the xLSTM paper.
