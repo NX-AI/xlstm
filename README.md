@@ -3,6 +3,8 @@
 ![xLSTM Figure](./res/desc_xlstm_overview.svg)
 
 > Paper: https://arxiv.org/abs/2405.04517
+>
+> Authors: Maximilian Beck, Korbinian Pöppel, Markus Spanring, Andreas Auer, Oleksandra Prudnikova, Michael Kopp, Günter Klambauer, Johannes Brandstetter, Sepp Hochreiter
 
 ## About
 
@@ -10,9 +12,45 @@ xLSTM is a new Recurrent Neural Network architecture based on ideas of the origi
 Through Exponential Gating with appropriate normalization and stabilization techniques and a new Matrix Memory it overcomes the limitations of the original LSTM 
 and shows promising performance on Language Modeling when compared to Transformers or State Space Models.
 
+:rotating_light: We trained a 7B parameter xLSTM Language Model on 2.3T tokens! :rotating_light:
+
+We refer to the optimized architecture for our xLSTM 7B as xLSTM Large. 
+
+## Minimal Installation
+
+Create a conda environment from the file `environment_pt240cu124.yaml`.
+Install the model code only (i.e. the module `xlstm`) as package:
+
+For using the xLSTM Large 7B model install [`mlstm_kernels`](https://github.com/NX-AI/mlstm_kernels) via:
+``` 
+pip install mlstm_kernels
+```
+Then install the xlstm package via pip: 
+```bash
+pip install xlstm
+```
+Or clone from github:
+```bash
+git clone https://github.com/NX-AI/xlstm.git
+cd xlstm
+pip install -e .
+```
+
+## Requirements
+
+This package is based on PyTorch and was tested for versions `>=1.8`. For a well-tested environment, install the `environment_pt240cu124.yaml` as:
+```bash
+conda env create -n xlstm -f environment_pt240cu124.yaml
+conda activate xlstm
+``` 
+
+For the xLSTM Large 7B model we require our [`mlstm_kernels`](https://github.com/NX-AI/mlstm_kernels) package, which provides fast kernels for the xLSTM.
+
 # xLSTM Large 7B
 
-:rotating_light: We trained a 7B parameter xLSTM Language Model :rotating_light:
+> Paper: https://arxiv.org/abs/2503.13427
+>
+> Authors: Maximilian Beck, Korbinian Pöppel, Phillip Lippe, Richard Kurle, Patrick M. Blies, Günter Klambauer, Sebastian Böck, Sepp Hochreiter
 
 ![xLSTM Figure](./res/xlstm_7b_poster.svg)
 
@@ -21,37 +59,71 @@ The code for the updated architecture is located in `xlstm/xlstm_large`.
 
 The model weights are available on Huggingface at https://huggingface.co/NX-AI/xLSTM-7b. 
 
-## Minimal Installation
+## How to use the xLSTM Large 7B and its architecture
 
-Create a conda environment from the file `environment_pt220cu121.yaml`.
-Install the model code only (i.e. the module `xlstm`) as package:
+We provide a standalone single file implementation of the xLSTM Large architecture in [`xlstm/xlstm_large/model.py`](https://github.com/NX-AI/xlstm/blob/main/xlstm/xlstm_large/model.py).
+This implementation requires our [`mlstm_kernels`](https://github.com/NX-AI/mlstm_kernels) package and other than that has no dependency on the NeurIPS xLSTM architecture implementation.
 
-Install via pip: 
-```bash
-pip install xlstm
+For a quick start, we provide a [`demo.ipynb`](https://github.com/NX-AI/xlstm/blob/main/notebooks/xlstm_large/demo.ipynb) notebook for the xLSTM Large architecture at `notebooks/xlstm_large/demo.ipynb`. 
+
+In this notebook we import our config and model class, initialize a random model and perform a forward pass, like so:
+
+```python
+import torch
+from xlstm.xlstm_large.model import xLSTMLargeConfig, xLSTMLarge
+
+# configure the model with TFLA Triton kernels
+xlstm_config = xLSTMLargeConfig(
+    embedding_dim=512,
+    num_heads=4,
+    num_blocks=6,
+    vocab_size=2048,
+    return_last_states=True,
+    mode="inference",
+    chunkwise_kernel="chunkwise--triton_xl_chunk", # xl_chunk == TFLA kernels
+    sequence_kernel="native_sequence__triton",
+    step_kernel="triton",
+)
+# instantiate the model
+xlstm = xLSTMLarge(xlstm_config)
+xlstm = xlstm.to("cuda")
+# create inputs
+input = torch.randint(0, 2048, (3, 256)).to("cuda")
+# run a forward pass
+out = xlstm(input)
+out.shape[1:] == (256, 2048)
 ```
-Clone from github:
-```bash
-git clone https://github.com/NX-AI/xlstm.git
-cd xlstm
-pip install -e .
+
+## Recommendation for other hardware
+
+We have tested our model mostly on NVIDIA GPUs, however our Triton kernels should also run on AMD GPUs. 
+For other platforms, like Apple Metal, we recommend using the native PyTorch implementations for now:
+
+```python 
+xlstm_config = xLSTMLargeConfig(
+    embedding_dim=512,
+    num_heads=4,
+    num_blocks=6,
+    vocab_size=2048,
+    return_last_states=True,
+    mode="inference",
+    chunkwise_kernel="chunkwise--native_autograd", # no Triton kernels
+    sequence_kernel="native_sequence__native", # no Triton kernels
+    step_kernel="native", # no Triton kernels
+)
 ```
 
-For using the 7B xLSTM model install `mlstm_kernels` via:
-``` 
-pip install mlstm_kernels
-```
+# Models from the xLSTM NeurIPS Paper
 
-## Requirements
+This section explains how to use the models from the xLSTM paper.
 
-This package is based on PyTorch and was tested for versions `>=1.8`. For the CUDA version of sLSTM, you need Compute Capability >= 8.0, see [https://developer.nvidia.com/cuda-gpus](https://developer.nvidia.com/cuda-gpus). For a well-tested environment, install the `environment_pt220cu121.yaml` as:
-```bash
-conda env create -n xlstm -f environment_pt220cu121.yaml
-conda activate xlstm
-``` 
+## How to use the xLSTM architecture from our NeurIPS paper
 
-For the xLSTM Large 7B model we require our `mlstm_kernels` (TODO add github link) package, which provides fast kernels for the xLSTM.
+For non language applications or for integrating in other architectures you can use the `xLSTMBlockStack` and for language modeling or other token-based applications you can use the `xLSTMLMModel`.
 
+### Using the sLSTM CUDA kernels
+
+For the CUDA version of sLSTM, you need Compute Capability >= 8.0, see [https://developer.nvidia.com/cuda-gpus](https://developer.nvidia.com/cuda-gpus).
 
 For all kinds of custom setups with torch and CUDA, keep in mind that versions have to match. Also, to make sure the correct CUDA libraries are included you can use the "XLSTM_EXTRA_INCLUDE_PATHS" environment variable now to inject different include paths, e.g.:
 
@@ -67,16 +139,6 @@ os.environ['XLSTM_EXTRA_INCLUDE_PATHS']='/usr/local/include/cuda/:/usr/include/c
 ```
 
 for standalone, even faster sLSTM kernels, feel free to use the [FlashRNN](https://github.com/NX-AI/flashrnn) library.
-
-
-
-# Models from the xLSTM Paper
-
-This section explains how to use the models from the xLSTM paper.
-
-## Usage
-
-For non language applications or for integrating in other architectures you can use the `xLSTMBlockStack` and for language modeling or other token-based applications you can use the `xLSTMLMModel`.
 
 ### xLSTM Block Stack
 
@@ -232,6 +294,16 @@ If you use this codebase, or otherwise find our work valuable, please cite the x
       booktitle = {Thirty-eighth Conference on Neural Information Processing Systems},
       year={2024},
       url={https://arxiv.org/abs/2405.04517}, 
+}
+
+@article{beck:25xlstm7b,
+  title        = {{xLSTM 7B}: A Recurrent LLM for Fast and Efficient Inference},
+  author       = {Maximilian Beck and Korbinian Pöppel and Phillip Lippe and Richard Kurle and Patrick M. Blies and Günter Klambauer and Sebastian Böck and Sepp Hochreiter},
+  year         = {2025},
+  volume       = {2503.13427},
+  journal      = {arXiv},
+  primaryclass = {cs.LG},
+  url          = {https://arxiv.org/abs/2503.13427}
 }
 
 ```
