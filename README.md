@@ -46,7 +46,7 @@ conda activate xlstm
 
 For the xLSTM Large 7B model we require our [`mlstm_kernels`](https://github.com/NX-AI/mlstm_kernels) package, which provides fast kernels for the xLSTM.
 
-# xLSTM Large 7B
+# xLSTM 7B: A Recurrent LLM for Fast and Efficient Inference
 
 > Paper: https://arxiv.org/abs/2503.13427
 >
