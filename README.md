@@ -123,7 +123,10 @@ For non language applications or for integrating in other architectures you can 
 
 ### Using the sLSTM CUDA kernels
 
-For the CUDA version of sLSTM, you need Compute Capability >= 8.0, see [https://developer.nvidia.com/cuda-gpus](https://developer.nvidia.com/cuda-gpus).
+For the CUDA version of sLSTM, you need Compute Capability >= 8.0, see [https://developer.nvidia.com/cuda-gpus](https://developer.nvidia.com/cuda-gpus). If you have problems with the compilation, please try (thanks to [@zia1138](https://github.com/zia1138) for pointing out):
+```bash
+export TORCH_CUDA_ARCH_LIST="8.0;8.6;9.0"
+```
 
 For all kinds of custom setups with torch and CUDA, keep in mind that versions have to match. Also, to make sure the correct CUDA libraries are included you can use the "XLSTM_EXTRA_INCLUDE_PATHS" environment variable now to inject different include paths, e.g.:
 
