@@ -29,11 +29,11 @@ def conv1d_step(
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """
     B: batch size
-    S: sequence length (debe ser 1 en modo step)
+    S: sequence length (must equal 1 in step mode)
     D: feature dimension
     KS: kernel size
     """
-    assert x.shape[1] == 1, "x debe tener secuencia de longitud 1 en modo step"
+    assert x.shape[1] == 1, "x must have a sequence length equal to 1"
     new_conv_state = torch.roll(conv_state, shifts=-1, dims=1).clone()
     new_conv_state[:, -1:, :] = x
 
