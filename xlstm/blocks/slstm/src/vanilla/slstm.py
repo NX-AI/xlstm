@@ -27,13 +27,11 @@ def slstm_forward_pointwise(
     else:
         mnew = torch.max(iraw, logfplusm)
     ogate = torch.sigmoid(oraw)
-    igate = torch.exp(iraw - mnew)
-    fgate = torch.exp(logfplusm - mnew)
+    igate = torch.minimum(torch.exp(iraw - mnew), torch.ones_like(iraw))
+    fgate = torch.minimum(torch.exp(logfplusm - mnew), torch.ones_like(iraw))
     cnew = fgate * c + igate * torch.tanh(zraw)
     nnew = fgate * n + igate
     ynew = ogate * cnew / nnew
 
     # shapes ([B,H], [B,H], [B,H]), ([B,H],[B,H],[B,H],[B,H])
-    return torch.stack((ynew, cnew, nnew, mnew), dim=0), torch.stack(
-        (igate, fgate, zraw, ogate), dim=0
-    )
+    return torch.stack((ynew, cnew, nnew, mnew), dim=0), torch.stack((igate, fgate, zraw, ogate), dim=0)
