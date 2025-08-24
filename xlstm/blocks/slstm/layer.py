@@ -103,7 +103,7 @@ class sLSTMLayer(nn.Module):
         else:
             x_conv = x
 
-        i, f, z, o = (
+        f, i, z, o = (
             self.fgate(x_conv),
             self.igate(x_conv),
             self.zgate(x),
