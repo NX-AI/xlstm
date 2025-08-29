@@ -60,6 +60,8 @@ template <> torch::Dtype typeToTorchDtype<float>() { return torch::kFloat; }
 
 template <> torch::Dtype typeToTorchDtype<at::Half>() { return torch::kHalf; }
 
+template <> torch::Dtype typeToTorchDtype<__half>() { return torch::kHalf; }
+
 template <> torch::Dtype typeToTorchDtype<at::BFloat16>() {
   return torch::kBFloat16;
 }
