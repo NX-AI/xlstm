@@ -2,7 +2,7 @@
 # Korbinian Poeppel
 import logging
 import os
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from typing import Optional, Literal
 from pathlib import Path
 
@@ -511,8 +511,10 @@ class sLSTMCellCUDA(object):
 
     @classmethod
     def instance(cls, config: sLSTMCellConfig):
-        if repr(config) not in cls.mod:
-            cls.mod[repr(config)] = load(
+        cache_key = repr({k: v for k, v in asdict(config).items() if k not in "_block_idx"})
+
+        if cache_key not in cls.mod:
+            cls.mod[cache_key] = load(
                 name=config.function,
                 sources=[
                     str(curdir / "src" / "cuda" / "slstm.cc"),
@@ -529,7 +531,7 @@ class sLSTMCellCUDA(object):
                 ]
                 + config.defines,
             )
-        return cls.mod[repr(config)]
+        return cls.mod[cache_key]
 
 
 def sLSTMCellFuncGenerator(training, config: sLSTMCellConfig):
