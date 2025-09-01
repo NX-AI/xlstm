@@ -1,0 +1,37 @@
+name: Sync to Public Repo
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+    types:
+      - closed
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    if: ${{ github.repository == 'NX-AI/xlstm-internal' }}
+    env:
+      DESTINATION_URL: git@github.com:NX-AI/xlstm.git
+
+    steps:
+      - name: Checkout source repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Configure SSH and Push to Destination
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SYNC_DEPLOY_KEY }}" | base64 --decode > ~/.ssh/sync_deploy_key
+          chmod 600 ~/.ssh/sync_deploy_key
+          eval "$(ssh-agent -s)"
+          ssh-add ~/.ssh/sync_deploy_key
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+          git remote add destination ${DESTINATION_URL}
+          git push destination main --force
