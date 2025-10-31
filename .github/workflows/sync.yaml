@@ -34,4 +34,4 @@ jobs:
           ssh-keyscan github.com >> ~/.ssh/known_hosts
 
           git remote add destination ${DESTINATION_URL}
-          git push destination main --force
+          git push destination main
