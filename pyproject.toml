@@ -13,37 +13,33 @@ authors = [
 description = "A novel LSTM variant with promising performance compared to Transformers or State Space Models."
 readme = "README.md"
 license = {file="LICENSE"}
-requires-python = "==3.11.*"
+requires-python = ">=3.9"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
 ]
 keywords = ["LSTM", "Transformer", "Machine Learning", "Deep Learning", "State Space Models"]
 dependencies = [
-    "torch==2.5.1",
-    "einops==0.8.1",
-    "numpy==1.26.4",
-    "opt_einsum==3.4.0", 
-    "omegaconf==2.3.0",
-    "transformers==4.55.4",
-    "reportlab==4.4.3",
-    "joypy==0.2.6",
-    "ipykernel==6.30.1",
-    "dacite==1.9.2",
-    "ftfy==6.3.1", 
-    "ninja==1.13.0",
-    "huggingface-hub==0.34.4",
-    "rich==14.1.0",
-    "tokenizers==0.21.4",
-    "tqdm==4.67.1",
-    "seaborn==0.13.2",
-    "mlstm_kernels==2.0.1"
+    "torch",
+    "einops",
+    "numpy",
+    "opt_einsum", 
+    "omegaconf",
+    "transformers",
+    "reportlab",
+    "joypy",
+    "ipykernel",
+    "dacite",
+    "ftfy", 
+    "ninja",
+    "huggingface-hub",
+    "rich",
+    "tokenizers",
+    "tqdm",
+    "seaborn",
+    "mlstm_kernels",
 ]
 
-[project.optional-dependencies]
-cpu = [
-    "triton @ git+https://github.com/triton-lang/triton.git@2ac060b8b955cf4c6412458bea9df554342c1b1a"
-]
 
 # [tool.setuptools]
 # include_package_data = true
