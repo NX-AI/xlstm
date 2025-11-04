@@ -1,10 +1,20 @@
+<div align="center">
+
 # xLSTM: Extended Long Short-Term Memory
+
+[![Paper](https://img.shields.io/static/v1?label=Paper&message=2405.04517&color=B31B1B&logo=arXiv)](https://arxiv.org/abs/2405.04517)
+[![PyPI](https://img.shields.io/pypi/v/xlstm?color=blue)](https://pypi.org/project/xlstm/)
+[![PyPI Downloads](https://static.pepy.tech/personalized-badge/xlstm?period=total&units=INTERNATIONAL_SYSTEM&left_color=GREY&right_color=BLUE&left_text=downloads)](https://pepy.tech/projects/tirex-ts)
+![GitHub Repo stars](https://img.shields.io/github/stars/NX-AI/xlstm)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
 
 ![xLSTM Figure](./res/desc_xlstm_overview.svg)
 
-> Paper: https://arxiv.org/abs/2405.04517
+</div>
+
+> **Paper:** https://arxiv.org/abs/2405.04517
 >
-> Authors: Maximilian Beck, Korbinian Pöppel, Markus Spanring, Andreas Auer, Oleksandra Prudnikova, Michael Kopp, Günter Klambauer, Johannes Brandstetter, Sepp Hochreiter
+> **Authors:** Maximilian Beck, Korbinian Pöppel, Markus Spanring, Andreas Auer, Oleksandra Prudnikova, Michael Kopp, Günter Klambauer, Johannes Brandstetter, Sepp Hochreiter
 
 ## About
 
@@ -46,13 +56,21 @@ conda activate xlstm
 
 For the xLSTM Large 7B model we require our [`mlstm_kernels`](https://github.com/NX-AI/mlstm_kernels) package, which provides fast kernels for the xLSTM.
 
-# xLSTM 7B: A Recurrent LLM for Fast and Efficient Inference
+<div align="center">
 
-> Paper: https://arxiv.org/abs/2503.13427
+# xLSTM 7B: A Recurrent LLM for Fast and Efficient Inference
+[![Paper](https://img.shields.io/static/v1?label=Paper&message=2503.13427&color=B31B1B&logo=arXiv)](https://arxiv.org/abs/2503.13427)
+[![Hugging Face](https://img.shields.io/badge/HuggingFace-xLSTM_7B-yellow?logo=huggingface)](https://huggingface.co/NX-AI/xLSTM-7b)
+[![License](https://img.shields.io/badge/license-nxai_community-green)](https://github.com/NX-AI/tirex-internal/blob/main/LICENSE)
+
+
+> **Paper:** https://arxiv.org/abs/2503.13427
 >
-> Authors: Maximilian Beck, Korbinian Pöppel, Phillip Lippe, Richard Kurle, Patrick M. Blies, Günter Klambauer, Sebastian Böck, Sepp Hochreiter
+> **Authors:** Maximilian Beck, Korbinian Pöppel, Phillip Lippe, Richard Kurle, Patrick M. Blies, Günter Klambauer, Sebastian Böck, Sepp Hochreiter
 
 ![xLSTM Figure](./res/xlstm_7b_poster.svg)
+
+</div>
 
 We have optimized the xLSTM architecture in terms of training throughput and stability. 
 The code for the updated architecture is located in `xlstm/xlstm_large`.
@@ -112,6 +130,10 @@ xlstm_config = xLSTMLargeConfig(
     step_kernel="native", # no Triton kernels
 )
 ```
+
+If you are working inside Apple's MLX ecosystem, check out the community-driven
+[xLSTM-metal](https://github.com/MLXPorts/xLSTM-metal) port which provides an
+MLX-native implementation of xLSTM targeting Apple Silicon.
 
 # Models from the xLSTM NeurIPS Paper
 
@@ -292,21 +314,19 @@ Note that the training loop does not contain early stopping or test evaluation.
 If you use this codebase, or otherwise find our work valuable, please cite the xLSTM paper:
 ```
 @inproceedings{beck:24xlstm,
-      title={xLSTM: Extended Long Short-Term Memory}, 
-      author={Maximilian Beck and Korbinian Pöppel and Markus Spanring and Andreas Auer and Oleksandra Prudnikova and Michael Kopp and Günter Klambauer and Johannes Brandstetter and Sepp Hochreiter},
-      booktitle = {Thirty-eighth Conference on Neural Information Processing Systems},
-      year={2024},
-      url={https://arxiv.org/abs/2405.04517}, 
+  title = {xLSTM: Extended Long Short-Term Memory}, 
+  author = {Maximilian Beck and Korbinian Pöppel and Markus Spanring and Andreas Auer and Oleksandra Prudnikova and Michael Kopp and Günter Klambauer and Johannes Brandstetter and Sepp Hochreiter},
+  booktitle = {Thirty-eighth Conference on Neural Information Processing Systems},
+  year = {2024},
+  url = {https://arxiv.org/abs/2405.04517}, 
 }
 
 @article{beck:25xlstm7b,
-  title        = {{xLSTM 7B}: A Recurrent LLM for Fast and Efficient Inference},
-  author       = {Maximilian Beck and Korbinian Pöppel and Phillip Lippe and Richard Kurle and Patrick M. Blies and Günter Klambauer and Sebastian Böck and Sepp Hochreiter},
-  year         = {2025},
-  volume       = {2503.13427},
-  journal      = {arXiv},
-  primaryclass = {cs.LG},
-  url          = {https://arxiv.org/abs/2503.13427}
+  title = {{xLSTM 7B}: A Recurrent LLM for Fast and Efficient Inference},
+  author = {Maximilian Beck and Korbinian Pöppel and Phillip Lippe and Richard Kurle and Patrick M. Blies and Günter Klambauer and Sebastian Böck and Sepp Hochreiter},
+  booktitle = {Forty-second International Conference on Machine Learning},
+  year = {2025},
+  url = {https://arxiv.org/abs/2503.13427}
 }
 
 ```
