@@ -101,7 +101,7 @@ def load(*, name, sources, extra_cflags=(), extra_cuda_cflags=(), **kwargs):
             "-res-usage",
             "--use_fast_math",
             "-O3",
-            "-Xptxas -O3",
+            "-Xptxas",
             "--extra-device-vectorization",
             *extra_cflags,
             *extra_cuda_cflags,
