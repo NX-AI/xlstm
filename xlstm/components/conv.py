@@ -90,7 +90,8 @@ class CausalConv1d(nn.Module):
                 **self.config.conv1d_kwargs,
             )
         # B, C, L
-        self.reset_parameters()
+        if self.config.kernel_size == 0:
+            self.reset_parameters()
 
     def reset_parameters(self, **kwargs):
         self.conv.reset_parameters()
