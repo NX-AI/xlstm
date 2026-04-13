@@ -21,6 +21,8 @@ class mLSTMLayerConfig(UpProjConfigMixin):
     qkv_proj_blocksize: int = 4
     num_heads: int = 4
     proj_factor: float = 2.0
+    memory_backend: str = "dense"
+    gate_mode: str = "sigmoid"
 
     # will be set toplevel config
     embedding_dim: int = -1
@@ -84,6 +86,8 @@ class mLSTMLayer(nn.Module):
                 context_length=self.config.context_length,
                 embedding_dim=self.config._inner_embedding_dim,
                 num_heads=self.config.num_heads,
+                memory_backend=self.config.memory_backend,
+                gate_mode=self.config.gate_mode,
             )
         )
         self.ogate_act_fn = nn.SiLU()

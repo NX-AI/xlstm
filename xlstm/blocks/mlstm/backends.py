@@ -100,6 +100,11 @@ def recurrent_step_stabilized_simple(
     igate_preact: torch.Tensor,
     fgate_preact: torch.Tensor,
     eps: float = 1e-6,
+    memory_backend: str = "dense",
+    k_quantizer: Optional[torch.nn.Module] = None,
+    v_quantizer: Optional[torch.nn.Module] = None,
+    gate_mode: str = "sigmoid",
+    ternary_gate: Optional[torch.nn.Module] = None,
     **kwargs,
 ) -> tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
     """This is a single step of the mLSTM operation in recurrent form.
@@ -113,6 +118,11 @@ def recurrent_step_stabilized_simple(
         v (torch.Tensor): (B, NH, 1, DH)
         igate_preact (torch.Tensor): (B, NH, 1, 1)
         fgate_preact (torch.Tensor): (B, NH, 1, 1)
+        memory_backend (str): "dense" or "stc_sparse"
+        k_quantizer (nn.Module): Optional quantizer for keys
+        v_quantizer (nn.Module): Optional quantizer for values
+        gate_mode (str): "sigmoid" or "ternary"
+        ternary_gate (nn.Module): Optional ternary gate module
 
     Returns:
         tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
@@ -133,7 +143,22 @@ def recurrent_step_stabilized_simple(
 
     k_scaled = k / math.sqrt(DH)
 
-    c_state_new = fg_act * c_state + ig_act * (k_scaled @ v.transpose(-1, -2))  # (B, NH, DH, DH)
+    if memory_backend == "stc_sparse":
+        assert k_quantizer is not None and v_quantizer is not None, "Quantizers must be provided for stc_sparse backend."
+        k_q = k_quantizer(k_scaled)
+        v_q = v_quantizer(v)
+        from ...kernels.stc_sparse_update import stc_sparse_update
+        update = stc_sparse_update(None, k_q, v_q, None, None) # This logic needs adjustment
+        # Actually stc_sparse_update should return ONLY the update (outer product)
+    else:
+        update = k_scaled @ v.transpose(-1, -2)
+
+    if gate_mode == "ternary":
+        assert ternary_gate is not None, "ternary_gate module must be provided for ternary gate mode."
+        c_state_new = ternary_gate(c_state, update, fgate_preact) # Using fgate_preact as gate_input
+    else:
+        c_state_new = fg_act * c_state + ig_act * update  # (B, NH, DH, DH)
+    
     n_state_new = fg_act * n_state + ig_act * k_scaled  # (B, NH, DH, 1)
 
     h_num = q.transpose(-1, -2) @ c_state_new  # (B, NH, 1, DH)

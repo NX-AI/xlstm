@@ -15,6 +15,8 @@ class mLSTMCellConfig:
     context_length: int = -1
     embedding_dim: int = -1
     num_heads: int = -1
+    memory_backend: str = "dense" # "dense" or "stc_sparse"
+    gate_mode: str = "sigmoid" # "sigmoid" or "ternary"
 
 
 class mLSTMCell(nn.Module):
@@ -29,6 +31,15 @@ class mLSTMCell(nn.Module):
 
         self.igate = nn.Linear(3 * config.embedding_dim, config.num_heads)
         self.fgate = nn.Linear(3 * config.embedding_dim, config.num_heads)
+
+        if config.memory_backend == "stc_sparse":
+            from ...modules.ternary_quantizer import TernaryQuantizer
+            self.k_quantizer = TernaryQuantizer()
+            self.v_quantizer = TernaryQuantizer()
+        
+        if config.gate_mode == "ternary":
+            from ...modules.ternary_gate import TernaryGate
+            self.ternary_gate = TernaryGate()
 
         self.outnorm = MultiHeadLayerNorm(ndim=config.embedding_dim, weight=True, bias=False)
 
@@ -123,6 +134,11 @@ class mLSTMCell(nn.Module):
             v=v,
             igate_preact=igate_preact,
             fgate_preact=fgate_preact,
+            memory_backend=self.config.memory_backend,
+            k_quantizer=getattr(self, "k_quantizer", None),
+            v_quantizer=getattr(self, "v_quantizer", None),
+            gate_mode=self.config.gate_mode,
+            ternary_gate=getattr(self, "ternary_gate", None),
         )  # (B, NH, 1 DH), ((B, NH, DH, DH), (B, NH, DH, 1), (B, NH, 1, 1))
 
         h_state_norm = self.outnorm(h_state)  # (B, NH, S, DH)
