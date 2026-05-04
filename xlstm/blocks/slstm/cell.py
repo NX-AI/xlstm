@@ -511,6 +511,23 @@ class sLSTMCellCUDA(object):
 
     @classmethod
     def instance(cls, config: sLSTMCellConfig):
+
+        if all([
+            config.num_heads == 4,
+            config.num_states == 4,
+            config.dtype_b == config.dtype_a == "float32",
+            config.dtype_r == config.dtype_w == config.dtype_g == config.dtype_s == config.dtype == "bfloat16",
+            config.num_gates == 4,
+            config.gradient_recurrent_clipval is None,
+        ]):
+            logging.info("Using precompiled sLSTM CUDA kernel")
+            try:
+                import xlstm._slstm as slstm_cuda
+                return slstm_cuda
+            except ImportError:
+                logging.warning("Precompiled sLSTM CUDA kernel not found, compiling from source")
+                pass
+
         cache_key = repr({k: v for k, v in asdict(config).items() if k not in "_block_idx"})
 
         if cache_key not in cls.mod:

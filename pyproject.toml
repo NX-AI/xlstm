@@ -1,6 +1,11 @@
 [build-system]
-requires = ["setuptools>=42", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = [
+  "scikit-build-core>=0.11",
+  "pybind11>=3.0",
+  "numpy>=2.0",
+  "torch>=2.0",
+]
+build-backend = "scikit_build_core.build"
 
 [project]
 name = "xlstm"
@@ -13,14 +18,14 @@ authors = [
 description = "A novel LSTM variant with promising performance compared to Transformers or State Space Models."
 readme = "README.md"
 license = {file="LICENSE"}
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
 ]
 keywords = ["LSTM", "Transformer", "Machine Learning", "Deep Learning", "State Space Models"]
 dependencies = [
-    "torch",
+    "torch>=2.0",
     "einops",
     "numpy",
     "opt_einsum", 
@@ -37,12 +42,45 @@ dependencies = [
     "tokenizers",
     "tqdm",
     "seaborn",
-    "mlstm_kernels",
+    "mlstm_kernels; python_version >= '3.11'",
+]
+
+[tool.uv]
+cache-keys = [
+    {file = "pyproject.toml"},
+    {file = "CMakeLists.txt"},
+    {file = "blocks/slstm/src/cuda/*.c"},
+    {file = "blocks/slstm/src/cuda/*.cc"},
+    {file = "blocks/slstm/src/cuda/*.h"},
+    {file = "blocks/slstm/src/cuda/*.cu"},
+    {file = "blocks/slstm/src/cuda/*.cuh"},
+    {file = "blocks/slstm/src/util/*.c"},
+    {file = "blocks/slstm/src/util/*.cc"},
+    {file = "blocks/slstm/src/util/*.h"},
+    {file = "blocks/slstm/src/util/*.cu"},
+    {file = "blocks/slstm/src/util/*.cuh"},
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
+
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-cu126", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+  # { index = "pytorch-cu130", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
 ]
 
 
-# [tool.setuptools]
-# include_package_data = true
+[tool.scikit-build]
+minimum-version = "build-system.requires"
+
 
 [tool.setuptools.package-data]
 "xlstm" = ["blocks/slstm/src/cuda/*.c", "blocks/slstm/src/cuda/*.cc", "blocks/slstm/src/cuda/*.h", "blocks/slstm/src/cuda/*.cu", "blocks/slstm/src/cuda/*.cuh", "blocks/slstm/src/util/*.c", "blocks/slstm/src/util/*.cc", "blocks/slstm/src/util/*.h", "blocks/slstm/src/util/*.cu", "blocks/slstm/src/util/*.cuh"]
