@@ -114,10 +114,19 @@ class xLSTMBlockStack(nn.Module):
         if not isinstance(self.post_blocks_norm, nn.Identity):
             self.post_blocks_norm.reset_parameters()
 
-    def forward(self, x: torch.Tensor, **kwargs) -> torch.Tensor:
-
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # NOTE: prior signature was `forward(self, x, **kwargs)`. The
+        # **kwargs path blocked `torch.jit.script(model)` because
+        # TorchScript requires an explicit (non-variadic) signature.
+        # Removed because (a) the kwargs were forwarded blindly to inner
+        # blocks (xlstm + ffn forwards), neither of which documents any
+        # non-empty kwargs argument; (b) production users running
+        # inference via libtorch C++ (and tools like onnx export) need
+        # the scriptable signature. Callers that need to thread state
+        # through forward should use `step()` instead, which keeps its
+        # explicit `state` parameter and the per-block kwargs path.
         for block in self.blocks:
-            x = block(x, **kwargs)
+            x = block(x)
 
         x = self.post_blocks_norm(x)
 
