@@ -3,8 +3,13 @@ requires = [
   "scikit-build-core>=0.11",
   "pybind11>=3.0",
   "numpy>=2.0",
-  "torch>=2.0",
 ]
+# NOTE: torch is intentionally NOT a build requirement. It is only needed at
+# build time when the CUDA sLSTM extension is compiled (CUDAToolkit present).
+# Listing it here forces isolated builds (pip/uv default) to download the CUDA
+# torch wheel plus all nvidia-* dependencies, which is wrong on ROCm/CPU-only
+# machines. When building with a CUDA toolchain, install torch into the build
+# environment and use --no-build-isolation.
 build-backend = "scikit_build_core.build"
 
 [project]
@@ -71,11 +76,14 @@ name = "pytorch-cu130"
 url = "https://download.pytorch.org/whl/cu130"
 explicit = true
 
-[tool.uv.sources]
-torch = [
-  { index = "pytorch-cu126", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
-  # { index = "pytorch-cu130", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
-]
+# Do not pin torch to a CUDA index by default: on ROCm/CPU-only machines this
+# drags in the full nvidia-* wheel stack. CUDA users can opt in by uncommenting
+# the source below (the explicit indexes above are inert unless referenced).
+# [tool.uv.sources]
+# torch = [
+#   { index = "pytorch-cu126", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+#   # { index = "pytorch-cu130", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+# ]
 
 
 [tool.scikit-build]
