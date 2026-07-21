@@ -53,6 +53,26 @@ find_package(pybind11 CONFIG REQUIRED)
 # Find CUDA and set up the CUDA language
 find_package(CUDAToolkit QUIET)
 if (CUDAToolkit_FOUND)
+  # torch is only required at build time for the CUDA extension. It is
+  # deliberately not part of build-system.requires (that would pull the CUDA
+  # torch wheel and its nvidia-* dependencies onto ROCm/CPU-only machines), so
+  # probe for it and skip the extension gracefully if it is missing.
+  execute_process(
+      COMMAND "${PYTHON_EXECUTABLE}"
+      -c "import torch;print(torch.utils.cmake_prefix_path)"
+      OUTPUT_VARIABLE TORCH_CMAKE_PREFIX_PATH
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      RESULT_VARIABLE TORCH_IMPORT_RESULT
+  )
+  if (NOT TORCH_IMPORT_RESULT EQUAL 0)
+    message(WARNING
+      "CUDAToolkit found but torch is not importable in the build environment; "
+      "skipping the sLSTM CUDA extension. Install torch in the build "
+      "environment and build with --no-build-isolation to enable it.")
+    set(CUDAToolkit_FOUND FALSE)
+  endif()
+endif()
+if (CUDAToolkit_FOUND)
   message(STATUS "CUDAToolkit found: ${CUDAToolkit_VERSION}, building with CUDA support")
   if (DEFINED CMAKE_CUDA_ARCHITECTURES)
     set(XLSTM_CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES})
@@ -83,14 +103,7 @@ if (CUDAToolkit_FOUND)
     set(ENV{TORCH_CUDA_ARCH_LIST} "7.5;8.0;8.6;9.0+PTX")
   endif()
 
-  # Get Torch's CMake package from the build environment used by scikit-build.
-  execute_process(
-      COMMAND "${PYTHON_EXECUTABLE}"
-      -c "import torch;print(torch.utils.cmake_prefix_path)"
-      OUTPUT_VARIABLE TORCH_CMAKE_PREFIX_PATH
-      OUTPUT_STRIP_TRAILING_WHITESPACE
-      COMMAND_ERROR_IS_FATAL ANY
-  )
+  # Torch's CMake package location was probed above.
   list(PREPEND CMAKE_PREFIX_PATH "${TORCH_CMAKE_PREFIX_PATH}")
   find_package(Torch REQUIRED)
   target_include_directories(_slstm PRIVATE ${TORCH_INCLUDE_DIRS})
