@@ -29,18 +29,25 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 keywords = ["LSTM", "Transformer", "Machine Learning", "Deep Learning", "State Space Models"]
+# torch is NOT a base dependency: its CUDA, ROCm and CPU builds live on
+# separate PyTorch wheel indexes and there is no way to auto-select the right
+# one here, so pinning it would force a CUDA build (and the nvidia-* stack)
+# onto ROCm/CPU machines. Install a backend extra plus the matching index, e.g.
+#   pip install "xlstm[rocm]" --extra-index-url https://download.pytorch.org/whl/rocm6.2
+#   pip install "xlstm[cuda]" --extra-index-url https://download.pytorch.org/whl/cu126
+#   pip install "xlstm[cpu]"  --extra-index-url https://download.pytorch.org/whl/cpu
+# or just have torch already installed for your platform.
 dependencies = [
-    "torch>=2.0",
     "einops",
     "numpy",
-    "opt_einsum", 
+    "opt_einsum",
     "omegaconf",
     "transformers",
     "reportlab",
     "joypy",
     "ipykernel",
     "dacite",
-    "ftfy", 
+    "ftfy",
     "ninja",
     "huggingface-hub",
     "rich",
@@ -49,6 +56,11 @@ dependencies = [
     "seaborn",
     "mlstm_kernels; python_version >= '3.11'",
 ]
+
+[project.optional-dependencies]
+cuda = ["torch>=2.0"]
+rocm = ["torch>=2.0"]
+cpu  = ["torch>=2.0"]
 
 [tool.uv]
 cache-keys = [
@@ -66,24 +78,6 @@ cache-keys = [
     {file = "blocks/slstm/src/util/*.cuh"},
 ]
 
-[[tool.uv.index]]
-name = "pytorch-cu126"
-url = "https://download.pytorch.org/whl/cu126"
-explicit = true
-
-[[tool.uv.index]]
-name = "pytorch-cu130"
-url = "https://download.pytorch.org/whl/cu130"
-explicit = true
-
-# Do not pin torch to a CUDA index by default: on ROCm/CPU-only machines this
-# drags in the full nvidia-* wheel stack. CUDA users can opt in by uncommenting
-# the source below (the explicit indexes above are inert unless referenced).
-# [tool.uv.sources]
-# torch = [
-#   { index = "pytorch-cu126", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
-#   # { index = "pytorch-cu130", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
-# ]
 
 
 [tool.scikit-build]
