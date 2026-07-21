@@ -78,6 +78,7 @@ def _hipify_sources(sources):
     """
     import shutil
     from torch.utils.hipify import hipify_python
+    from torch.utils.file_baton import FileBaton
 
     src_root = os.path.abspath(curdir)
     out_root = os.environ.get(
@@ -88,74 +89,101 @@ def _hipify_sources(sources):
             "hip_src",
         ),
     )
-    for sub in ("cuda", "util"):
-        shutil.copytree(
-            os.path.join(src_root, sub), os.path.join(out_root, sub), dirs_exist_ok=True
-        )
-    hipify_python.hipify(
-        project_directory=out_root,
-        output_directory=out_root,
-        includes=[os.path.join(out_root, "*")],
-        is_pytorch_extension=True,
-        show_detailed=False,
-    )
-    # hipify writes renamed copies (cuda/foo.cu -> hip/foo.hip, blas.h ->
-    # blas_hip.h) and leaves the untranslated originals; overwrite the originals
-    # with the hipified text so stale relative includes still resolve to HIP.
-    for dirpath, _, filenames in os.walk(out_root):
-        for filename in filenames:
-            path = os.path.join(dirpath, filename)
-            rel = os.path.relpath(path, out_root)
-            hip_rel = hipify_python.get_hip_file_path(rel, is_pytorch_extension=True)
-            hip_path = os.path.join(out_root, hip_rel)
-            if hip_path != path and os.path.exists(hip_path):
-                shutil.copyfile(hip_path, path)
 
-    # Residual fixups hipify's substitution map does not cover: CUDA-only
-    # driver headers that have no HIP counterpart, and the fp16 gemm pointer
-    # (hipify rewrites &cublasHgemm -> &hipblasHgemm, whose hipblasHalf
-    # signature is incompatible with the __half-typed wrapper; point it at the
-    # local cublasHgemm2 wrapper instead, matching the strided path).
-    import re
-
-    _dead_includes = re.compile(
-        r'^\s*#\s*include\s*[<"](?:cuda|cuda_runtime_api|cuda_device_runtime_api)\.h[>"]\s*$',
-        re.MULTILINE,
-    )
-    for dirpath, _, filenames in os.walk(out_root):
-        for filename in filenames:
-            path = os.path.join(dirpath, filename)
-            with open(path, "r") as fh:
-                text = fh.read()
-            new_text = _dead_includes.sub("// [hip] removed CUDA-only include", text)
-            new_text = re.sub(r"&\s*hipblasHgemm\b", "&cublasHgemm2", new_text)
-            # bf16 blas support is gated on CUDART_VERSION, which HIP lacks;
-            # enable the same block on ROCm.
-            new_text = new_text.replace(
-                "CUDART_VERSION >= 11020",
-                "(CUDART_VERSION >= 11020 || defined(__HIP_PLATFORM_AMD__))",
-            )
-            if new_text != text:
-                with open(path, "w") as fh:
-                    fh.write(new_text)
-
-    new_sources = []
-    for source in sources:
+    def _map_source(source):
         rel = os.path.relpath(os.path.abspath(source), src_root)
         hip_rel = hipify_python.get_hip_file_path(rel, is_pytorch_extension=True)
         hip_path = os.path.join(out_root, hip_rel)
         if not os.path.exists(hip_path):
             hip_path = os.path.join(out_root, rel)
-        # The pybind glue (.cc) references the HIP fp16/bf16 types for its
-        # dtype dispatch. Those headers only compile under clang, so route the
-        # glue through hipcc by giving it a .hip extension (torch selects the
-        # compiler by suffix); a plain-C++ host compile would fail.
+        # The pybind glue (.cc) references the HIP fp16/bf16 types for its dtype
+        # dispatch. Those headers only compile under clang, so route the glue
+        # through hipcc by giving it a .hip extension (torch selects the compiler
+        # by suffix); a plain-C++ host compile would fail.
         if hip_path.endswith((".cc", ".cpp")):
-            hip_source = os.path.splitext(hip_path)[0] + "_glue.hip"
-            shutil.copyfile(hip_path, hip_source)
-            hip_path = hip_source
-        new_sources.append(hip_path)
-    return new_sources
+            hip_path = os.path.splitext(hip_path)[0] + "_glue.hip"
+        return hip_path
+
+    def _produce():
+        for sub in ("cuda", "util"):
+            shutil.copytree(
+                os.path.join(src_root, sub), os.path.join(out_root, sub), dirs_exist_ok=True
+            )
+        hipify_python.hipify(
+            project_directory=out_root,
+            output_directory=out_root,
+            includes=[os.path.join(out_root, "*")],
+            is_pytorch_extension=True,
+            show_detailed=False,
+        )
+        # hipify writes renamed copies (cuda/foo.cu -> hip/foo.hip, blas.h ->
+        # blas_hip.h) and leaves the untranslated originals; overwrite the
+        # originals with the hipified text so stale relative includes resolve.
+        for dirpath, _, filenames in os.walk(out_root):
+            for filename in filenames:
+                path = os.path.join(dirpath, filename)
+                rel = os.path.relpath(path, out_root)
+                hip_rel = hipify_python.get_hip_file_path(rel, is_pytorch_extension=True)
+                hip_path = os.path.join(out_root, hip_rel)
+                if hip_path != path and os.path.exists(hip_path):
+                    shutil.copyfile(hip_path, path)
+
+        # Residual fixups hipify's substitution map does not cover: CUDA-only
+        # driver headers with no HIP counterpart, and the fp16 gemm pointer
+        # (hipify rewrites &cublasHgemm -> &hipblasHgemm, whose hipblasHalf
+        # signature is incompatible with the __half-typed wrapper; point it at
+        # the local cublasHgemm2 wrapper instead, matching the strided path).
+        import re
+
+        _dead_includes = re.compile(
+            r'^\s*#\s*include\s*[<"](?:cuda|cuda_runtime_api|cuda_device_runtime_api)\.h[>"]\s*$',
+            re.MULTILINE,
+        )
+        _text_exts = (".cu", ".cuh", ".cc", ".cpp", ".c", ".h", ".hpp", ".hip")
+        for dirpath, _, filenames in os.walk(out_root):
+            if "__pycache__" in dirpath:
+                continue
+            for filename in filenames:
+                if not filename.endswith(_text_exts):
+                    continue  # skip .pyc and other binaries copied alongside sources
+                path = os.path.join(dirpath, filename)
+                with open(path, "r") as fh:
+                    text = fh.read()
+                new_text = _dead_includes.sub("// [hip] removed CUDA-only include", text)
+                new_text = re.sub(r"&\s*hipblasHgemm\b", "&cublasHgemm2", new_text)
+                # bf16 blas support is gated on CUDART_VERSION, which HIP lacks;
+                # enable the same block on ROCm.
+                new_text = new_text.replace(
+                    "CUDART_VERSION >= 11020",
+                    "(CUDART_VERSION >= 11020 || defined(__HIP_PLATFORM_AMD__))",
+                )
+                if new_text != text:
+                    with open(path, "w") as fh:
+                        fh.write(new_text)
+
+        for source in sources:
+            if source.endswith((".cc", ".cpp")):
+                rel = os.path.relpath(os.path.abspath(source), src_root)
+                hip_rel = hipify_python.get_hip_file_path(rel, is_pytorch_extension=True)
+                orig = os.path.join(out_root, hip_rel)
+                if not os.path.exists(orig):
+                    orig = os.path.join(out_root, rel)
+                shutil.copyfile(orig, _map_source(source))
+
+    # Serialize the shared cache tree across concurrent workers (e.g. several
+    # dataloader / distributed processes initializing the backend at once): the
+    # first to arrive builds it, the rest wait for that build to finish.
+    os.makedirs(os.path.dirname(out_root), exist_ok=True)
+    baton = FileBaton(out_root.rstrip("/") + ".lock")
+    if baton.try_acquire():
+        try:
+            _produce()
+        finally:
+            baton.release()
+    else:
+        baton.wait()
+
+    return [_map_source(s) for s in sources]
 
 
 def load(*, name, sources, extra_cflags=(), extra_cuda_cflags=(), **kwargs):
