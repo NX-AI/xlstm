@@ -262,10 +262,62 @@ class sLSTMCellBase(nn.Module):
 
         self.reset_parameters()
 
+        # Persist the backend-agnostic (external/canonical) layout in `state_dict` so
+        # checkpoints can be moved between backends (e.g. "cuda" <-> "vanilla"). The
+        # stored `_recurrent_kernel_`/`_bias_` parameters are kept in a backend-specific
+        # internal layout; without these hooks a checkpoint saved with one backend fails
+        # to load into another -- the recurrent kernel raises a size mismatch and the
+        # bias loads silently with a scrambled gate/head ordering. See issue #127.
+        self._register_state_dict_hook(sLSTMCellBase._state_dict_to_external_hook)
+        self._register_load_state_dict_pre_hook(
+            sLSTMCellBase._load_state_dict_to_internal_pre_hook, with_module=True
+        )
+
         if self.config.hidden_size % self.config.num_heads != 0:
             raise ValueError(
                 f"Hidden Size {self.config.hidden_size} must be divisible by head num {self.config.num_heads}"
             )
+
+    @staticmethod
+    def _state_dict_to_external_hook(module, state_dict, prefix, local_metadata):
+        """Store the recurrent kernel and bias in the backend-agnostic external layout."""
+        recurrent_kernel_key = prefix + "_recurrent_kernel_"
+        bias_key = prefix + "_bias_"
+        if recurrent_kernel_key in state_dict:
+            state_dict[recurrent_kernel_key] = module._recurrent_kernel_int2ext(
+                state_dict[recurrent_kernel_key]
+            )
+        if bias_key in state_dict:
+            state_dict[bias_key] = module._bias_int2ext(state_dict[bias_key])
+        return state_dict
+
+    @staticmethod
+    def _load_state_dict_to_internal_pre_hook(
+        module,
+        state_dict,
+        prefix,
+        local_metadata,
+        strict,
+        missing_keys,
+        unexpected_keys,
+        error_msgs,
+    ):
+        """Convert an external-layout checkpoint to this backend's internal layout.
+
+        External tensors are identified by their rank (recurrent kernel: 4D, bias: 3D).
+        Legacy checkpoints saved in the internal layout (recurrent kernel: 3D, bias: 1D)
+        are left untouched so they still load into a cell of their original backend.
+        """
+        recurrent_kernel_key = prefix + "_recurrent_kernel_"
+        bias_key = prefix + "_bias_"
+        recurrent_kernel = state_dict.get(recurrent_kernel_key)
+        if recurrent_kernel is not None and recurrent_kernel.ndim == 4:
+            state_dict[recurrent_kernel_key] = module._recurrent_kernel_ext2int(
+                recurrent_kernel
+            )
+        bias = state_dict.get(bias_key)
+        if bias is not None and bias.ndim == 3:
+            state_dict[bias_key] = module._bias_ext2int(bias)
 
     def __repr__(self):
         return (
