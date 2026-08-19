@@ -69,6 +69,18 @@ def test_state_dict_same_backend_round_trip(cls):
 
 
 @pytest.mark.parametrize("cls", [sLSTMCell_vanilla, sLSTMCell_cuda])
+def test_state_dict_tensors_are_contiguous(cls):
+    """Exported tensors must be contiguous so serializers that require it (e.g.
+    ``safetensors.torch.save_file``) accept the state dict."""
+    config = sLSTMCellConfig(hidden_size=16, num_heads=4)
+    cell = cls(config, skip_backend_init=True)
+
+    state_dict = cell.state_dict()
+    assert state_dict["_recurrent_kernel_"].is_contiguous()
+    assert state_dict["_bias_"].is_contiguous()
+
+
+@pytest.mark.parametrize("cls", [sLSTMCell_vanilla, sLSTMCell_cuda])
 def test_state_dict_loads_legacy_internal_checkpoint(cls):
     """A legacy checkpoint stored in the internal layout still loads into a cell
     of its original backend (backward compatibility)."""

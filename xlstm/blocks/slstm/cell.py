@@ -283,12 +283,15 @@ class sLSTMCellBase(nn.Module):
         """Store the recurrent kernel and bias in the backend-agnostic external layout."""
         recurrent_kernel_key = prefix + "_recurrent_kernel_"
         bias_key = prefix + "_bias_"
+        # The external conversions can return non-contiguous views (the vanilla
+        # backend uses `permute`); materialize them so serializers that require
+        # contiguous tensors, e.g. `safetensors.torch.save_file`, accept the result.
         if recurrent_kernel_key in state_dict:
             state_dict[recurrent_kernel_key] = module._recurrent_kernel_int2ext(
                 state_dict[recurrent_kernel_key]
-            )
+            ).contiguous()
         if bias_key in state_dict:
-            state_dict[bias_key] = module._bias_int2ext(state_dict[bias_key])
+            state_dict[bias_key] = module._bias_int2ext(state_dict[bias_key]).contiguous()
         return state_dict
 
     @staticmethod
