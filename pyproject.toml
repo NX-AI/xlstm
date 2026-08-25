@@ -68,6 +68,13 @@ torch = [
 [tool.scikit-build]
 minimum-version = "build-system.requires"
 
+[tool.pytest.ini_options]
+pythonpath = ["."]
+log_cli = true
+log_cli_level = "INFO"
+log_format = "%(asctime)s %(levelname)s %(message)s"
+log_date_format = "%Y-%m-%d %H:%M:%S"
+
 
 [project.urls]
 Repository = "https://github.com/NX-AI/xlstm"
