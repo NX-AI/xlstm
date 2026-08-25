@@ -69,9 +69,6 @@ torch = [
 minimum-version = "build-system.requires"
 
 
-[tool.setuptools.package-data]
-"xlstm" = ["blocks/slstm/src/cuda/*.c", "blocks/slstm/src/cuda/*.cc", "blocks/slstm/src/cuda/*.h", "blocks/slstm/src/cuda/*.cu", "blocks/slstm/src/cuda/*.cuh", "blocks/slstm/src/util/*.c", "blocks/slstm/src/util/*.cc", "blocks/slstm/src/util/*.h", "blocks/slstm/src/util/*.cu", "blocks/slstm/src/util/*.cuh"]
-
 [project.urls]
 Repository = "https://github.com/NX-AI/xlstm"
 Issues = "https://github.com/NX-AI/xlstm/issues"
