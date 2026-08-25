@@ -2,7 +2,6 @@
 requires = [
   "scikit-build-core>=0.11",
   "pybind11>=3.0",
-  "numpy>=2.0",
   "torch>=2.0",
 ]
 build-backend = "scikit_build_core.build"
@@ -26,22 +25,10 @@ classifiers = [
 keywords = ["LSTM", "Transformer", "Machine Learning", "Deep Learning", "State Space Models"]
 dependencies = [
     "torch>=2.0",
-    "einops",
-    "numpy",
-    "opt_einsum", 
     "omegaconf",
-    "transformers",
-    "reportlab",
-    "joypy",
-    "ipykernel",
-    "dacite",
-    "ftfy", 
+    "safetensors",
+    "packaging",
     "ninja",
-    "huggingface-hub",
-    "rich",
-    "tokenizers",
-    "tqdm",
-    "seaborn",
     "mlstm_kernels; python_version >= '3.11'",
 ]
 
