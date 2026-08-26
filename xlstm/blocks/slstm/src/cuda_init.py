@@ -92,6 +92,7 @@ def load(*, name, sources, extra_cflags=(), extra_cuda_cflags=(), **kwargs):
         "extra_ldflags": [f"-L{os.environ['CUDA_LIB']}", "-lcublas"],
         "extra_cflags": [*extra_cflags],
         "extra_cuda_cflags": [
+            "--static-global-template-stub=false",
             # "-gencode",
             # "arch=compute_70,code=compute_70",
             # "-dbg=1",
