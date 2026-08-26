@@ -16,7 +16,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from xlstm.xlstm_lm_model import xLSTMLMModel, xLSTMLMModelConfig
+from xlstm_plus.xlstm_lm_model import xLSTMLMModel, xLSTMLMModelConfig
 
 dataset_registry: dict[str, Type[DataGen]] = {
     "form_language": FormLangDatasetGenerator

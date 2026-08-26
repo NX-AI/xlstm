@@ -1,8 +1,8 @@
 import torch
 import pytest
 
-from xlstm.xlstm_large.model import xLSTMLargeConfig, xLSTMLarge
-from xlstm.xlstm_large.generate import generate_tokens
+from xlstm_plus.xlstm_large.model import xLSTMLargeConfig, xLSTMLarge
+from xlstm_plus.xlstm_large.generate import generate_tokens
 
 
 def template_test_generation(

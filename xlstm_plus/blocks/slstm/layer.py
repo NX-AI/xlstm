@@ -1,5 +1,6 @@
 # Copyright (c) NXAI GmbH and its affiliates 2024
 # Korbininan Pöppel
+# Modifications Copyright (c) 2026 LeZeez
 from dataclasses import dataclass
 from typing import Optional
 import torch
@@ -125,9 +126,12 @@ class sLSTMLayer(nn.Module):
         x: torch.Tensor,
         conv_state: Optional[torch.Tensor] = None,
         slstm_state: Optional[torch.Tensor] = None,
+        boundaries: Optional[torch.Tensor] = None,
         return_last_state=False,
+        return_detached_states: bool = False,
         **kwargs,
     ) -> torch.Tensor:
+        from ...state_utils import _BOUNDARY_RESET_LOGF
         B, S, _ = x.shape
 
         if self.config.conv1d_kernel_size > 0:
@@ -148,15 +152,24 @@ class sLSTMLayer(nn.Module):
             self.ogate(x),
         )
 
+        if boundaries is not None:
+            b_mask = boundaries.to(dtype=torch.bool, device=f.device)
+            f = f.masked_fill(b_mask.unsqueeze(-1), _BOUNDARY_RESET_LOGF)
+
         y, slstm_state = self.slstm_cell(
             torch.cat([i, f, z, o], dim=-1), state=slstm_state
         )
-
         y = self.dropout(y)
-
         out = self.group_norm(y).transpose(1, 2).view(B, S, -1)
 
         if return_last_state:
+            if return_detached_states:
+                if isinstance(slstm_state, tuple):
+                    slstm_state = tuple(s.detach() if s is not None else None for s in slstm_state)
+                elif isinstance(slstm_state, torch.Tensor):
+                    slstm_state = slstm_state.detach()
+                if conv_state is not None:
+                    conv_state = tuple(c.detach() if c is not None else None for c in conv_state) if isinstance(conv_state, tuple) else conv_state.detach()
             return out, {"conv_state": conv_state, "slstm_state": slstm_state}
         else:
             return out

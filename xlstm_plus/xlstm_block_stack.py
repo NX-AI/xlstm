@@ -1,5 +1,6 @@
 # Copyright (c) NXAI GmbH and its affiliates 2024
 # Maximilian Beck
+# Modifications Copyright (c) 2026 LeZeez
 from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Literal, Optional, Union
@@ -114,13 +115,54 @@ class xLSTMBlockStack(nn.Module):
         if not isinstance(self.post_blocks_norm, nn.Identity):
             self.post_blocks_norm.reset_parameters()
 
-    def forward(self, x: torch.Tensor, **kwargs) -> torch.Tensor:
+    def forward(
+        self,
+        x: torch.Tensor,
+        boundaries: Optional[torch.Tensor] = None,
+        state: Optional[dict] = None,
+        return_last_states: bool = False,
+        return_detached_states: bool = False,
+        **kwargs,
+    ):
+        """Forward pass of the xLSTM block stack.
 
-        for block in self.blocks:
-            x = block(x, **kwargs)
+        Args:
+            x: (B, S, D)
+            boundaries: Optional bool (B, S) document-boundary mask.
+            state: Optional ``dict[str, dict]`` keyed ``"block_0"``, ``"block_1"`` …
+                carrying per-block states from a previous chunk.
+            return_last_states: Return a state dict after the forward pass.
+            return_detached_states: Detach all state tensors before returning.
+
+        Returns:
+            x (B, S, D), or ``(x, state_dict)`` when states are requested.
+        """
+        need_state = return_last_states or (state is not None)
+        if state is None:
+            state = {}
+
+        new_state: dict = {}
+        for block_idx, block in enumerate(self.blocks):
+            b_key = f"block_{block_idx}"
+            b_state = state.get(b_key, None)
+
+            if need_state:
+                x, b_state_new = block(
+                    x,
+                    boundaries=boundaries,
+                    state=b_state,
+                    return_last_state=True,
+                    return_detached_states=return_detached_states,
+                    **kwargs,
+                )
+                new_state[b_key] = b_state_new
+            else:
+                x = block(x, boundaries=boundaries, **kwargs)
 
         x = self.post_blocks_norm(x)
 
+        if need_state:
+            return x, new_state
         return x
 
     def step(

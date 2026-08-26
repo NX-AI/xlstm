@@ -1,4 +1,4 @@
-from xlstm.xlstm_large.model import xLSTMLargeConfig, xLSTMLarge
+from xlstm_plus.xlstm_large.model import xLSTMLargeConfig, xLSTMLarge
 import torch
 import numpy as np
 

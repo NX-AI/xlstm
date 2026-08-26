@@ -1,5 +1,6 @@
 # Copyright (c) NXAI GmbH and its affiliates 2024
 # Maximilian Beck
+# Modifications Copyright (c) 2026 LeZeez
 from dataclasses import dataclass
 from typing import Optional
 
@@ -73,10 +74,65 @@ class xLSTMBlock(nn.Module):
 
         self.reset_parameters()
 
-    def forward(self, x: torch.Tensor, **kwargs) -> torch.Tensor:
-        x = x + self.xlstm(self.xlstm_norm(x), **kwargs)
+    def forward(
+        self,
+        x: torch.Tensor,
+        boundaries: Optional[torch.Tensor] = None,
+        state: Optional[dict] = None,
+        return_last_state: bool = False,
+        return_detached_states: bool = False,
+        **kwargs,
+    ):
+        """Forward pass of the xLSTM block.
+
+        Args:
+            x: (B, S, D)
+            boundaries: Optional bool (B, S) for document boundary reset.
+            state: Optional carry state dict from previous chunk.
+            return_last_state: Return state after this block.
+            return_detached_states: Detach state tensors before returning.
+        """
+        need_state = return_last_state or (state is not None)
+        # Unpack state whether supplied as dict (sLSTM) or tuple (mLSTM)
+        if isinstance(state, dict):
+            conv_state  = state.get("conv_state",  None)
+            slstm_state = state.get("slstm_state", None)
+            mlstm_state = state.get("mlstm_state", None)
+        elif isinstance(state, tuple):
+            conv_state  = None
+            slstm_state = None
+            mlstm_state = state
+        else:
+            conv_state  = None
+            slstm_state = None
+            mlstm_state = None
+
+        if need_state:
+            xlstm_out, xlstm_state = self.xlstm(
+                self.xlstm_norm(x),
+                boundaries=boundaries,
+                # mLSTM layer uses `state` kwarg; sLSTM uses positional conv/slstm_state
+                state=mlstm_state,
+                conv_state=conv_state,
+                slstm_state=slstm_state,
+                return_last_state=True,
+                return_detached_states=return_detached_states,
+                **kwargs,
+            )
+        else:
+            xlstm_out = self.xlstm(
+                self.xlstm_norm(x),
+                boundaries=boundaries,
+                **kwargs,
+            )
+            xlstm_state = None
+
+        x = x + xlstm_out
         if self.ffn is not None:
-            x = x + self.ffn(self.ffn_norm(x), **kwargs)
+            x = x + self.ffn(self.ffn_norm(x))
+
+        if need_state:
+            return x, xlstm_state
         return x
 
     def step(self, x: torch.Tensor, **kwargs) -> tuple[torch.Tensor, dict[str, tuple[torch.Tensor, ...]]]:

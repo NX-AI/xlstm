@@ -1,6 +1,8 @@
 # Copyright (c) NXAI GmbH and its affiliates 2024
 # Maximilian Beck
+# Modifications Copyright (c) 2026 LeZeez
 from dataclasses import dataclass
+from typing import Optional
 
 import torch
 from torch import nn
@@ -98,7 +100,24 @@ class mLSTMLayer(nn.Module):
         self.dropout = nn.Dropout(self.config.dropout)
         self.reset_parameters()
 
-    def forward(self, x: torch.Tensor, **kwargs) -> torch.Tensor:
+    def forward(
+        self,
+        x: torch.Tensor,
+        boundaries: Optional[torch.Tensor] = None,
+        state: Optional[tuple] = None,
+        return_last_state: bool = False,
+        return_detached_states: bool = False,
+        **kwargs,
+    ):
+        """Forward pass of the classic mLSTM layer.
+
+        Args:
+            x: (B, S, embedding_dim)
+            boundaries: Optional bool (B, S) – resets forget gate at doc starts.
+            state: Optional (c, n, m) carry from a previous chunk.
+            return_last_state: Return final (c, n, m) state.
+            return_detached_states: Detach state before returning.
+        """
         B, S, _ = x.shape
 
         # up-projection
@@ -113,7 +132,19 @@ class mLSTMLayer(nn.Module):
         k = self.k_proj(x_mlstm_conv_act)
         v = self.v_proj(x_mlstm)
 
-        h_tilde_state = self.mlstm_cell(q=q, k=k, v=v)
+        need_state = return_last_state or (state is not None)
+        cell_out = self.mlstm_cell(
+            q=q, k=k, v=v,
+            boundaries=boundaries,
+            state=state,
+            return_last_state=need_state,
+            **kwargs,
+        )
+
+        if need_state:
+            h_tilde_state, out_state = cell_out
+        else:
+            h_tilde_state, out_state = cell_out, None
 
         h_tilde_state_skip = h_tilde_state + (self.learnable_skip * x_mlstm_conv_act)
 
@@ -122,6 +153,12 @@ class mLSTMLayer(nn.Module):
 
         # down-projection
         y = self.dropout(self.proj_down(h_state))
+
+        if need_state:
+            if return_detached_states and out_state is not None:
+                c, n, m = out_state
+                out_state = (c.detach(), n.detach(), m.detach())
+            return y, out_state
         return y
 
     def step(

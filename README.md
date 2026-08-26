@@ -1,3 +1,131 @@
+# xLSTM Plus
+
+This is a fork of the original [NX-AI/xlstm](https://github.com/NX-AI/xlstm) repository.
+
+It includes additonal features for more flexible training and support to Truncated Backpropagation Through Time (TBPTT).
+
+
+## Installation
+Create a virtual environment (e.g., with Conda from the file `environment_pt240cu124.yaml`) and install via pip:
+```bash
+pip install git+https://github.com/LeZeez/xlstm_plus.git
+
+### Or
+
+git clone https://github.com/LeZeez/xlstm_plus.git
+cd xlstm_plus
+pip install -e .
+```
+
+Triton Kernels (required for xLSTM Large 7B and provides faster training):
+```bash
+pip install mlstm_kernels
+```
+
+
+
+## Features
+
+### Auto mode for xLSTMLarge
+Uses triton kernels when sequences aligns with kernels constraints (e.g., seq_len divisible by chunk size, head dimension > 16) and the rest of sequences are passed to the native scan.
+
+When kernels are not available, or you are on CPU, it falls back to native scan with no constraints.
+
+```python
+import torch
+from xlstm_plus.xlstm_large import xLSTMLarge, xLSTMLargeConfig
+
+config = xLSTMLargeConfig(
+    embedding_dim=256,
+    num_heads=4,
+    num_blocks=4,
+    vocab_size=1000,
+    chunk_size=64,
+    mode="auto",  # Uses Triton when S % 64 == 0; falls back to native scan otherwise
+    return_last_states=True,
+)
+model = xLSTMLarge(config)
+```
+
+### Parameters `boundaries` and `return_detached_states` in forward pass
+Artificially injects `-1000` in the forget gate at the first token of each sequence, given that a tensor of bools in size `(B, T)` is provided - with `True` corresponding to the first token - so you can pack documents without padding. Returned states would be already detached, ready to be passed to the next batch (TBPTT).
+
+```python
+# Pack multiple documents into a single sequence without cross-document attention leakage
+B, S = 2, 64
+x = torch.randint(0, 1000, (B, S))
+
+# Mark position 32 as the start of Document 2
+boundaries = torch.zeros(B, S, dtype=torch.bool)
+boundaries[:, 32] = True
+
+logits, state = model(x, boundaries=boundaries, return_detached_states=True)
+```
+
+### Checkpointing
+Checkpointing decreases memory usage in exchange for slower training (~20-30% slower).
+
+```python
+from xlstm_plus.xlstm_large import xLSTMLarge, xLSTMLargeConfig
+
+config = xLSTMLargeConfig(
+    embedding_dim=256,
+    num_heads=4,
+    num_blocks=4,
+    vocab_size=1000,
+    chunk_size=64,
+    use_checkpoint=True,  # Saves VRAM with non-reentrant activation checkpointing
+    return_last_states=True,
+    mode="auto",
+)
+model = xLSTMLarge(config)
+```
+
+### Functions `zero_rows()` and `detach_states()`
+
+Utilities for asynchronous batching and continuous TBPTT memory management:
+- `detach_states(state)`: Recursively detaches all nested tensors in the state dictionary across steps.
+- `zero_rows(state, mask)`: In-place zeroes memory for sequences in the batch that reached EOS.
+
+```python
+import torch
+from xlstm_plus import detach_states, zero_rows
+from xlstm_plus.xlstm_large import xLSTMLarge, xLSTMLargeConfig
+
+config = xLSTMLargeConfig(
+    embedding_dim=256,
+    num_heads=4,
+    num_blocks=4,
+    vocab_size=1000,
+    return_last_states=True,
+    mode="auto",
+)
+model = xLSTMLarge(config)
+optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
+
+state = None
+for x_chunk, y_chunk, finished_mask in train_dataloader:
+    optimizer.zero_grad()
+    logits, state = model(x_chunk, state=state)
+    loss = torch.nn.functional.cross_entropy(logits.view(-1, 1000), y_chunk.view(-1))
+    loss.backward()
+    optimizer.step()
+
+    # Detach states before the next batch/chunk
+    state = detach_states(state)
+
+    # In-place reset memory rows for finished sequences in the active batch
+    # finished_mask: 1D bool tensor of shape (batch_size,)
+    if finished_mask.any():
+        zero_rows(state, finished_mask)
+```
+
+
+
+# (&darr; Read note) Original repository README 
+
+*Note: packages imports here are renamed to `xlstm_plus`*
+
 <div align="center">
 
 # xLSTM: Extended Long Short-Term Memory
@@ -28,23 +156,7 @@ We refer to the optimized architecture for our xLSTM 7B as xLSTM Large.
 
 ## Minimal Installation
 
-Create a conda environment from the file `environment_pt240cu124.yaml`.
-Install the model code only (i.e. the module `xlstm`) as package:
-
-For using the xLSTM Large 7B model install [`mlstm_kernels`](https://github.com/NX-AI/mlstm_kernels) via:
-``` 
-pip install mlstm_kernels
-```
-Then install the xlstm package via pip: 
-```bash
-pip install xlstm
-```
-Or clone from github:
-```bash
-git clone https://github.com/NX-AI/xlstm.git
-cd xlstm
-pip install -e .
-```
+*Removed (see Installation section above)*
 
 ## Requirements
 
@@ -88,7 +200,7 @@ In this notebook we import our config and model class, initialize a random model
 
 ```python
 import torch
-from xlstm.xlstm_large.model import xLSTMLargeConfig, xLSTMLarge
+from xlstm_plus.xlstm_large.model import xLSTMLargeConfig, xLSTMLarge
 
 # configure the model with TFLA Triton kernels
 xlstm_config = xLSTMLargeConfig(
@@ -172,7 +284,7 @@ The `xLSTMBLockStack` is meant for use as alternative backbone in existing proje
 ```python
 import torch
 
-from xlstm import (
+from xlstm_plus import (
     xLSTMBlockStack,
     xLSTMBlockStackConfig,
     mLSTMBlockConfig,
@@ -218,7 +330,7 @@ If you are working with yaml strings / files for configuration you can also use 
 from omegaconf import OmegaConf
 from dacite import from_dict
 from dacite import Config as DaciteConfig
-from xlstm import xLSTMBlockStack, xLSTMBlockStackConfig
+from xlstm_plus import xLSTMBlockStack, xLSTMBlockStackConfig
 
 xlstm_cfg = """ 
 mlstm_block:
@@ -260,7 +372,7 @@ The `xLSTMLMModel` is a wrapper around the `xLSTMBlockStack` that adds the token
 from omegaconf import OmegaConf
 from dacite import from_dict
 from dacite import Config as DaciteConfig
-from xlstm import xLSTMLMModel, xLSTMLMModelConfig
+from xlstm_plus import xLSTMLMModel, xLSTMLMModelConfig
 
 xlstm_cfg = """ 
 vocab_size: 50304

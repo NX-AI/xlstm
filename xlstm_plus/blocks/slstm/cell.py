@@ -522,11 +522,15 @@ class sLSTMCellCUDA(object):
         ]):
             logging.info("Using precompiled sLSTM CUDA kernel")
             try:
-                import xlstm._slstm as slstm_cuda
+                import xlstm_plus._slstm as slstm_cuda
                 return slstm_cuda
             except ImportError:
-                logging.warning("Precompiled sLSTM CUDA kernel not found, compiling from source")
-                pass
+                try:
+                    import xlstm._slstm as slstm_cuda
+                    return slstm_cuda
+                except ImportError:
+                    logging.warning("Precompiled sLSTM CUDA kernel not found, compiling from source")
+                    pass
 
         cache_key = repr({k: v for k, v in asdict(config).items() if k not in "_block_idx"})
 

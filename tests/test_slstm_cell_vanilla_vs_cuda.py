@@ -1,6 +1,6 @@
 import torch
 import pytest
-from xlstm.blocks.slstm.cell import sLSTMCellConfig, sLSTMCell
+from xlstm_plus.blocks.slstm.cell import sLSTMCellConfig, sLSTMCell
 
 
 def set_seed(seed):

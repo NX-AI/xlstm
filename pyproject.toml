@@ -1,21 +1,19 @@
 [build-system]
-requires = [
-  "scikit-build-core>=0.11",
-  "pybind11>=3.0",
-  "numpy>=2.0",
-  "torch>=2.0",
-]
-build-backend = "scikit_build_core.build"
+requires = ["setuptools>=64", "torch>=2.0"]
+build-backend = "setuptools.build_meta"
 
 [project]
-name = "xlstm"
-version = "2.0.5"
+name = "xlstm_plus"
+version = "0.1.0"
+maintainers = [
+  { name="LeZeez" },
+]
 authors = [
   { name="Maximilian Beck", email="beck@ml.jku.at" },
   { name="Korbinian Poeppel", email="poeppel@ml.jku.at" },
   { name="Andreas Auer", email="auer@ml.jku.at" },
 ]
-description = "A novel LSTM variant with promising performance compared to Transformers or State Space Models."
+description = "A fork of the original xLSTM repository with additional features."
 readme = "README.md"
 license = {file="LICENSE"}
 requires-python = ">=3.10"
@@ -23,7 +21,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
 ]
-keywords = ["LSTM", "Transformer", "Machine Learning", "Deep Learning", "State Space Models"]
+keywords = ["xLSTM", "LSTM", "Transformer", "Machine Learning", "Deep Learning", "State Space Models"]
 dependencies = [
     "torch>=2.0",
     "einops",
@@ -49,16 +47,16 @@ dependencies = [
 cache-keys = [
     {file = "pyproject.toml"},
     {file = "CMakeLists.txt"},
-    {file = "blocks/slstm/src/cuda/*.c"},
-    {file = "blocks/slstm/src/cuda/*.cc"},
-    {file = "blocks/slstm/src/cuda/*.h"},
-    {file = "blocks/slstm/src/cuda/*.cu"},
-    {file = "blocks/slstm/src/cuda/*.cuh"},
-    {file = "blocks/slstm/src/util/*.c"},
-    {file = "blocks/slstm/src/util/*.cc"},
-    {file = "blocks/slstm/src/util/*.h"},
-    {file = "blocks/slstm/src/util/*.cu"},
-    {file = "blocks/slstm/src/util/*.cuh"},
+    {file = "xlstm_plus/blocks/slstm/src/cuda/*.c"},
+    {file = "xlstm_plus/blocks/slstm/src/cuda/*.cc"},
+    {file = "xlstm_plus/blocks/slstm/src/cuda/*.h"},
+    {file = "xlstm_plus/blocks/slstm/src/cuda/*.cu"},
+    {file = "xlstm_plus/blocks/slstm/src/cuda/*.cuh"},
+    {file = "xlstm_plus/blocks/slstm/src/util/*.c"},
+    {file = "xlstm_plus/blocks/slstm/src/util/*.cc"},
+    {file = "xlstm_plus/blocks/slstm/src/util/*.h"},
+    {file = "xlstm_plus/blocks/slstm/src/util/*.cu"},
+    {file = "xlstm_plus/blocks/slstm/src/util/*.cuh"},
 ]
 
 [[tool.uv.index]]
@@ -82,9 +80,12 @@ torch = [
 minimum-version = "build-system.requires"
 
 
+[tool.setuptools.packages.find]
+include = ["xlstm_plus*"]
+
 [tool.setuptools.package-data]
-"xlstm" = ["blocks/slstm/src/cuda/*.c", "blocks/slstm/src/cuda/*.cc", "blocks/slstm/src/cuda/*.h", "blocks/slstm/src/cuda/*.cu", "blocks/slstm/src/cuda/*.cuh", "blocks/slstm/src/util/*.c", "blocks/slstm/src/util/*.cc", "blocks/slstm/src/util/*.h", "blocks/slstm/src/util/*.cu", "blocks/slstm/src/util/*.cuh"]
+"xlstm_plus" = ["blocks/slstm/src/cuda/*.c", "blocks/slstm/src/cuda/*.cc", "blocks/slstm/src/cuda/*.h", "blocks/slstm/src/cuda/*.cu", "blocks/slstm/src/cuda/*.cuh", "blocks/slstm/src/util/*.c", "blocks/slstm/src/util/*.cc", "blocks/slstm/src/util/*.h", "blocks/slstm/src/util/*.cu", "blocks/slstm/src/util/*.cuh"]
 
 [project.urls]
-Repository = "https://github.com/NX-AI/xlstm"
-Issues = "https://github.com/NX-AI/xlstm/issues"
+Repository = "https://github.com/LeZeez/xlstm-plus"
+Issues = "https://github.com/LeZeez/xlstm-plus/issues"

@@ -1,6 +1,6 @@
 import pytest
-from xlstm.xlstm_large.model import xLSTMLargeConfig, xLSTMLarge
-from xlstm.xlstm_large.utils import convert_single_weights_to_fused_weights
+from xlstm_plus.xlstm_large.model import xLSTMLargeConfig, xLSTMLarge
+from xlstm_plus.xlstm_large.utils import convert_single_weights_to_fused_weights
 import copy
 import torch
 import numpy as np

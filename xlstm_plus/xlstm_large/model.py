@@ -1,3 +1,5 @@
+# Copyright (c) NXAI GmbH and its affiliates 2024
+# Modifications Copyright (c) 2026 LeZeez (xlstm-plus) - Apache-2.0
 from dataclasses import dataclass, field
 
 try:
@@ -10,21 +12,38 @@ try:
         DtypeType,
         BackendModeType,
     )
+    from mlstm_kernels.torch.kernel_wrappers import (
+        wrap_chunkwise__arbitrary_sequence_length,
+    )
+    from mlstm_kernels.torch import (
+        get_mlstm_kernel,
+        get_mlstm_sequence_kernel,
+        get_mlstm_step_kernel,
+    )
 except ImportError:
     raise ImportError("Please install mlstm_kernels package to use mLSTM block.")
 
 
 import torch
 from torch import nn
-from typing import Literal
+from torch.utils.checkpoint import checkpoint as _torch_checkpoint
+from typing import Literal, Optional
 from .components import MultiHeadLayerNorm, RMSNorm, soft_cap
 from .utils import round_up_to_next_multiple_of
 from .generate import generate_tokens, get_sampling_fn
+from ..state_utils import (
+    _BOUNDARY_RESET_LOGF,
+    detach_states,
+    zero_rows,
+)
 
 mLSTMLayerStateType = tuple[torch.Tensor, torch.Tensor, torch.Tensor]
 mLSTMStateType = dict[int, mLSTMLayerStateType]
 
 WeightModeType = Literal["single", "fused"]
+# "auto" is our extension; the underlying mlstm_kernels BackendModeType does not
+# include it, so we keep the union as a plain string alias.
+ExtendedModeType = Literal["train", "train_with_padding", "inference", "auto"]
 
 
 @dataclass
@@ -66,12 +85,16 @@ class xLSTMLargeConfig:
     """The step kernel to use for processing a single step.
     Used for generation in inference mode.
     """
-    mode: BackendModeType = "train"
+    mode: str = "train"
     """The mode of operation for the backend. Determines how the `forward` method behaves.
-    Available modes are 'train', 'train_with_padding', 'inference'.
-    'inference' works with arbitrary sequence lengths, and does not support training. 
-    It calls a sequence of different kernels to process the sequence.
-    'train_with_padding' pads the input to multiples of `chunk_size`.
+    Available modes are 'train', 'train_with_padding', 'inference', 'auto'.
+
+    * 'train'             – use Triton chunkwise kernel; crash if constraints unmet.
+    * 'train_with_padding' – pad input to multiples of chunk_size, then use kernel.
+    * 'inference'         – step/prefill mix; works with any sequence length (no grad).
+    * 'auto'              – use Triton kernel when possible (CUDA, S % chunk_size == 0,
+                            head_dim >= 16, not inside torch.compile); otherwise fall
+                            back to the native differentiable recurrent scan.
     """
     chunk_size: int = 64
     """The chunk size of the chunkwise kernel.
@@ -81,6 +104,11 @@ class xLSTMLargeConfig:
     """Whether to return the last states of the sequence in training mode.
     Inference mode always returns the last states.
     """
+    use_checkpoint: bool = False
+    """Whether to wrap the mLSTM kernel/scan with non-reentrant activation
+    checkpointing (torch.utils.checkpoint).  Reduces activation memory at the
+    cost of one extra forward pass per backward.  Fully compatible with
+    detached-state TBPTT and frozen-embedding training."""
     autocast_kernel_dtype: DtypeType = "bfloat16"
     """The dtype to use for autocast behavior in the kernel.
     If autocast is enabled all inputs are cast to this dtype before the kernel is called.
@@ -124,18 +152,27 @@ class xLSTMLarge(nn.Module):
         )
 
     def forward(
-        self, x: torch.Tensor, state: mLSTMStateType | None = None
+        self, x: torch.Tensor, state: mLSTMStateType | None = None,
+        boundaries: torch.Tensor | None = None,
+        return_detached_states: bool = False,
     ) -> torch.Tensor | tuple[torch.Tensor, mLSTMStateType]:
         """Forward pass of the model.
         
         Args:
             x: Input tensor of shape [B, S].
             state: State dictionary of the model. 
-                   If None, the state is initialized, the model starts from an empty initial state.
+                   If None, the state is initialized from zeros.
+            boundaries: Optional bool tensor of shape [B, S]. ``True`` at
+                position ``(b, t)`` resets the mLSTM memory at that step,
+                preventing cross-document contamination in packed sequences.
+            return_detached_states: If True, detach all state tensors before
+                returning them so they can be used as initial states for the
+                next TBPTT chunk without carrying the previous computation graph.
         
         Returns:
             logits: Logits tensor of shape [B, S, V].
-            Tuple of logits and state: State dictionary of the model, if `return_last_states` is True.
+            Tuple of (logits, state) when ``return_last_states`` is True or a
+            state was passed in.
         """
 
         assert x.ndim == 2, f"Input must have shape [B, S], got {x.shape}"
@@ -143,7 +180,11 @@ class xLSTMLarge(nn.Module):
 
         x = self.embedding(x)
 
-        x, state = self.backbone(x, state)
+        x, state = self.backbone(
+            x, state,
+            boundaries=boundaries,
+            return_detached_states=return_detached_states,
+        )
 
         logits = self.lm_head(x)
         logits_capped = soft_cap(logits, self.config.output_logit_soft_cap)
@@ -207,22 +248,22 @@ class xLSTMLargeBlockStack(nn.Module):
             self.out_norm = nn.Identity()
 
     def forward(
-        self, x: torch.Tensor, state: mLSTMStateType | None = None
+        self, x: torch.Tensor, state: mLSTMStateType | None = None,
+        boundaries: torch.Tensor | None = None,
+        return_detached_states: bool = False,
     ) -> tuple[torch.Tensor, mLSTMStateType]:
         if state is None:
             state = {i: None for i in range(len(self.blocks))}
 
         for i, block in enumerate(self.blocks):
-            block_state = state[i]
-            x, block_state_new = block(x, block_state)
-
-            if block_state is None:
-                state[i] = block_state_new
-            else:
-                # layer state is a tuple of three tensors: c, n, m
-                # we update the state in place in order to avoid creating new tensors
-                for state_idx in range(len(block_state)):
-                    state[i][state_idx].copy_(block_state_new[state_idx])
+            x, block_state_new = block(
+                x, state[i],
+                boundaries=boundaries,
+                return_detached_states=return_detached_states,
+            )
+            # Simple reassignment – no in-place copy so TBPTT with detached
+            # states works correctly across chunks.
+            state[i] = block_state_new
 
         x = self.out_norm(x)
 
@@ -306,6 +347,17 @@ class mLSTMLayerConfig:
     Mode 'fused' uses a single weight matrix for the query, key, value, and output gates.
     """
 
+    use_checkpoint: bool = False
+    """Wrap the mLSTM backend/scan call with non-reentrant activation checkpointing."""
+
+    # Internal: effective mode resolved from the user-facing mode string.
+    # "auto" is stored here; _effective_backend_mode() translates it at runtime.
+    _mode: str = "train"
+
+
+# Cache hardware / capability validity so fallback is instantaneous after first probe
+_TRITON_PROBE_FAILED = False
+
 
 class mLSTMLayer(nn.Module):
     def __init__(self, config: mLSTMLayerConfig):
@@ -362,6 +414,11 @@ class mLSTMLayer(nn.Module):
         self.ogate_act_fn = nn.Sigmoid()
         self.mlstm_backend = mLSTMBackend(config=self.config.mlstm_backend)
 
+        # Official pure-autograd fallback kernels from mlstm_kernels
+        self._native_chunkwise_kernel_fn = get_mlstm_kernel("chunkwise--native_autograd")
+        self._native_sequence_kernel_fn = get_mlstm_sequence_kernel("native_sequence__native")
+        self._native_step_kernel_fn = get_mlstm_step_kernel("native")
+
         self.multihead_norm = MultiHeadLayerNorm(
             num_heads=self.config.num_heads,
             head_dim=self.v_dim // self.config.num_heads,
@@ -376,79 +433,165 @@ class mLSTMLayer(nn.Module):
             bias=self.config.use_bias,
         )
 
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _run_backend(
+        self,
+        q, k, v, i_preact, f_preact,
+        c_initial, n_initial, m_initial,
+        S: int, is_cuda: bool,
+    ):
+        """Dispatch to Triton kernel or native scan using official mlstm_kernels wrappers."""
+        eps = self.config.mlstm_backend.eps
+        chunk_size = self.config.mlstm_backend.chunk_size
+        head_dim_qk = self.qk_dim // self.config.num_heads
+        autocast_dtype = getattr(torch, self.config.mlstm_backend.autocast_kernel_dtype)
+
+        global _TRITON_PROBE_FAILED
+        can_use_triton = (
+            is_cuda
+            and not _TRITON_PROBE_FAILED
+            and head_dim_qk >= 16
+            and (self.config._mode in ("auto", "train"))
+            and not torch._dynamo.is_compiling()
+        )
+
+        def _native_fallback():
+            if S % chunk_size == 0:
+                return self._native_chunkwise_kernel_fn(
+                    q=q, k=k, v=v, i=i_preact, f=f_preact,
+                    c_initial=c_initial, n_initial=n_initial, m_initial=m_initial,
+                    chunk_size=chunk_size, eps=eps,
+                    return_last_states=True,
+                    autocast_kernel_dtype=autocast_dtype,
+                )
+            else:
+                return wrap_chunkwise__arbitrary_sequence_length(
+                    mlstm_chunkwise_kernel=self._native_chunkwise_kernel_fn,
+                    mlstm_sequence_kernel=self._native_sequence_kernel_fn,
+                    mlstm_step_kernel=self._native_step_kernel_fn,
+                    q=q, k=k, v=v, i=i_preact, f=f_preact,
+                    c_initial=c_initial, n_initial=n_initial, m_initial=m_initial,
+                    chunk_size=chunk_size, eps=eps,
+                    return_last_states=True,
+                    autocast_kernel_dtype=autocast_dtype,
+                )
+
+        def _dispatch():
+            global _TRITON_PROBE_FAILED
+            if not can_use_triton:
+                return _native_fallback()
+
+            try:
+                if S % chunk_size == 0:
+                    return self.mlstm_backend(
+                        q=q, k=k, v=v, i=i_preact, f=f_preact,
+                        c_initial=c_initial, n_initial=n_initial, m_initial=m_initial,
+                    )
+                else:
+                    return wrap_chunkwise__arbitrary_sequence_length(
+                        mlstm_chunkwise_kernel=self.mlstm_backend.chunkwise_kernel_fn,
+                        mlstm_sequence_kernel=self.mlstm_backend.sequence_kernel_fn,
+                        mlstm_step_kernel=self.mlstm_backend.step_kernel_fn,
+                        q=q, k=k, v=v, i=i_preact, f=f_preact,
+                        c_initial=c_initial, n_initial=n_initial, m_initial=m_initial,
+                        chunk_size=chunk_size, eps=eps,
+                        return_last_states=True,
+                        autocast_kernel_dtype=autocast_dtype,
+                    )
+            except Exception as e:
+                if self.config._mode == "auto":
+                    _TRITON_PROBE_FAILED = True
+                    return _native_fallback()
+                raise e
+
+        if self.config.use_checkpoint:
+            return _torch_checkpoint(_dispatch, use_reentrant=False)
+        return _dispatch()
+
+    # ------------------------------------------------------------------
+    # forward
+    # ------------------------------------------------------------------
+
     def forward(
-        self, x: torch.Tensor, state: mLSTMLayerStateType | None = None
+        self,
+        x: torch.Tensor,
+        state: mLSTMLayerStateType | None = None,
+        boundaries: torch.Tensor | None = None,
+        return_detached_states: bool = False,
     ) -> tuple[torch.Tensor, mLSTMLayerStateType | None]:
+        """Forward pass of the mLSTM layer.
+
+        Args:
+            x: Input tensor of shape [B, S, D].
+            state: Optional ``(C, n, m)`` carry from a previous chunk.
+            boundaries: Optional bool tensor of shape [B, S].  ``True`` at
+                ``(b, t)`` resets the forget gate at that step, preventing
+                cross-document memory contamination in packed sequences.
+            return_detached_states: Return detached state tensors so they can
+                be fed directly into the next TBPTT chunk.
+
+        Returns:
+            ``(y, state)`` where ``y`` has shape [B, S, D].
+        """
         assert x.ndim == 3, f"Input must have shape [B, S, D], got {x.shape}"
         B, S, _ = x.shape
+
         if self.config.weight_mode == "single":
             q = self.q(x)
             k = self.k(x)
             v = self.v(x)
             o_preact = self.ogate_preact(x)
-            i_preact = soft_cap(
-                self.igate_preact(x), cap_value=self.config.gate_soft_cap
-            )
-            f_preact = soft_cap(
-                self.fgate_preact(x), cap_value=self.config.gate_soft_cap
-            )
+            i_preact = soft_cap(self.igate_preact(x), cap_value=self.config.gate_soft_cap)
+            f_preact = soft_cap(self.fgate_preact(x), cap_value=self.config.gate_soft_cap)
 
         elif self.config.weight_mode == "fused":
             qkv_opreact = self.qkv_opreact(x)
             q, k, v, o_preact = torch.tensor_split(
                 qkv_opreact,
-                (
-                    self.qk_dim,
-                    2 * self.qk_dim,
-                    2 * self.qk_dim + self.v_dim,
-                ),
+                (self.qk_dim, 2 * self.qk_dim, 2 * self.qk_dim + self.v_dim),
                 dim=-1,
             )
+            if_preact = soft_cap(self.ifgate_preact(x), cap_value=self.config.gate_soft_cap)
+            i_preact, f_preact = torch.tensor_split(if_preact, (self.config.num_heads,), dim=-1)
 
-            if_preact = soft_cap(
-                self.ifgate_preact(x), cap_value=self.config.gate_soft_cap
-            )
-            i_preact, f_preact = torch.tensor_split(
-                if_preact, (self.config.num_heads,), dim=-1
-            )
+        # --- boundary reset: zero the forget gate at document starts ------
+        if boundaries is not None:
+            b_mask = boundaries.to(dtype=torch.bool, device=f_preact.device)
+            # f_preact is (B, S, NH); unsqueeze to (B, S, 1) to broadcast
+            f_preact = f_preact.masked_fill(b_mask.unsqueeze(-1), _BOUNDARY_RESET_LOGF)
 
-        q = q.reshape(B, S, self.config.num_heads, -1).transpose(1, 2)
-        k = k.reshape(B, S, self.config.num_heads, -1).transpose(1, 2)
-        v = v.reshape(B, S, self.config.num_heads, -1).transpose(1, 2)
-        i_preact = i_preact.transpose(1, 2)
-        f_preact = f_preact.transpose(1, 2)
-        if state is None:
-            c_initial, n_initial, m_initial = None, None, None
-        else:
-            c_initial, n_initial, m_initial = state
+        # reshape to kernel layout (B, H, S, D)
+        q       = q.reshape(B, S, self.config.num_heads, -1).transpose(1, 2)
+        k       = k.reshape(B, S, self.config.num_heads, -1).transpose(1, 2)
+        v       = v.reshape(B, S, self.config.num_heads, -1).transpose(1, 2)
+        i_preact = i_preact.transpose(1, 2)   # (B, H, S)
+        f_preact = f_preact.transpose(1, 2)   # (B, H, S)
 
-        h, state = self.mlstm_backend(
-            q=q,
-            k=k,
-            v=v,
-            i=i_preact,
-            f=f_preact,
-            c_initial=c_initial,
-            n_initial=n_initial,
-            m_initial=m_initial,
+        c_initial, n_initial, m_initial = (None, None, None) if state is None else state
+
+        h, state = self._run_backend(
+            q, k, v, i_preact, f_preact,
+            c_initial, n_initial, m_initial,
+            S=S, is_cuda=x.is_cuda,
         )
-        expected_h_shape = (
-            B,
-            self.config.num_heads,
-            S,
-            self.v_dim // self.config.num_heads,
-        )
-        assert (
-            h.shape == expected_h_shape
-        ), f"Got {h.shape}, expected {expected_h_shape}"
 
-        h = h.transpose(1, 2)
+        expected_h_shape = (B, self.config.num_heads, S, self.v_dim // self.config.num_heads)
+        assert h.shape == expected_h_shape, f"Got {h.shape}, expected {expected_h_shape}"
+
+        h      = h.transpose(1, 2)           # (B, S, H, Dh)
         h_norm = self.multihead_norm(h)
         h_norm = h_norm.reshape(B, S, -1)
 
         h_out = self.ogate_act_fn(o_preact) * h_norm
+        y     = self.out_proj(h_out)
 
-        y = self.out_proj(h_out)
+        if return_detached_states and state is not None:
+            c, n, m = state
+            state = (c.detach(), n.detach(), m.detach())
+
         return y, state
 
 
@@ -474,11 +617,17 @@ class mLSTMBlock(nn.Module):
                 v_dim_factor=config.v_dim_factor,
                 gate_soft_cap=config.gate_soft_cap,
                 weight_mode=config.weight_mode,
+                use_checkpoint=config.use_checkpoint,
+                # "auto" must not be passed to mLSTMBackendConfig directly;
+                # it is stored in _mode and resolved at runtime.
+                _mode=config.mode,
                 mlstm_backend=mLSTMBackendConfig(
                     chunkwise_kernel=config.chunkwise_kernel,
                     sequence_kernel=config.sequence_kernel,
                     step_kernel=config.step_kernel,
-                    mode=config.mode,
+                    # Backend always gets "train" when mode is "auto" so that
+                    # the mLSTMBackend object initialises without complaining.
+                    mode=config.mode if config.mode != "auto" else "train",
                     chunk_size=config.chunk_size,
                     return_last_states=config.return_last_states,
                     autocast_kernel_dtype=config.autocast_kernel_dtype,
@@ -497,10 +646,16 @@ class mLSTMBlock(nn.Module):
         self.ffn = FeedForward(config)
 
     def forward(
-        self, x: torch.Tensor, state: mLSTMStateType | None = None
+        self, x: torch.Tensor, state: mLSTMStateType | None = None,
+        boundaries: torch.Tensor | None = None,
+        return_detached_states: bool = False,
     ) -> tuple[torch.Tensor, mLSTMStateType]:
         x_mlstm = self.norm_mlstm(x)
-        x_mlstm, state = self.mlstm_layer(x_mlstm, state)
+        x_mlstm, state = self.mlstm_layer(
+            x_mlstm, state,
+            boundaries=boundaries,
+            return_detached_states=return_detached_states,
+        )
         x = x + x_mlstm
 
         x_ffn = self.norm_ffn(x)

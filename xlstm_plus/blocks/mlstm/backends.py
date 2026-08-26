@@ -1,5 +1,6 @@
 # Copyright (c) NXAI GmbH and its affiliates 2024
 # Maximilian Beck, Korbinian Pöppel
+# Modifications Copyright (c) 2026 LeZeez
 import math
 from typing import Optional
 
@@ -191,7 +192,14 @@ def chunkwise_simple(
 
     m = torch.zeros((B, NH, NS + 1, 1, 1), device=kv.device, dtype=kv.dtype)
     if initial_m is not None:
-        m[:, :, 0] = initial_m[:, :, None, None]
+        if initial_m.ndim == 2:
+            m[:, :, 0] = initial_m[:, :, None, None]
+        elif initial_m.ndim == 3:
+            m[:, :, 0] = initial_m[:, :, :, None]
+        elif initial_m.ndim == 4:
+            m[:, :, 0] = initial_m
+        else:
+            m[:, :, 0] = initial_m.view(B, NH, 1, 1)
 
     for i in range(1, NS + 1):
         m[:, :, i] = torch.maximum(
