@@ -76,6 +76,10 @@ if (CUDAToolkit_FOUND)
 
       WITH_SOABI
   )
+  target_compile_options(
+    _slstm PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:--static-global-template-stub=false>
+  )
   set_property(TARGET _slstm PROPERTY CUDA_ARCHITECTURES ${XLSTM_CUDA_ARCHITECTURES})
 
   # Build for CUDA architectures 8.0, 8.6, and 9.0 by default
