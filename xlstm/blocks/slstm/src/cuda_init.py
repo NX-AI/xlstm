@@ -8,6 +8,7 @@ import logging
 import time
 import random
 
+from packaging import version
 import torch
 from torch.utils.cpp_extension import load as _load
 
@@ -27,8 +28,6 @@ def defines_to_cflags(defines=Union[dict[str, Union[int, str]], Sequence[tuple[s
 curdir = os.path.dirname(__file__)
 
 if torch.cuda.is_available():
-    from packaging import version
-
     if version.parse(torch.__version__) >= version.parse("2.6.0"):
         os.environ["CUDA_LIB"] = os.path.join(
             os.path.split(torch.utils.cpp_extension.include_paths(device_type="cuda")[-1])[0], "lib"
@@ -46,7 +45,6 @@ if "CONDA_PREFIX" in os.environ:
     # This enforces adding the correct include directory from the CUDA installation via torch. If you use the system
     # installation, you might have to add the cflags yourself.
     from pathlib import Path
-    from packaging import version
     import glob
 
     if version.parse(torch.__version__) >= version.parse("2.6.0"):
@@ -92,6 +90,11 @@ def load(*, name, sources, extra_cflags=(), extra_cuda_cflags=(), **kwargs):
         "extra_ldflags": [f"-L{os.environ['CUDA_LIB']}", "-lcublas"],
         "extra_cflags": [*extra_cflags],
         "extra_cuda_cflags": [
+            *(
+                ["--static-global-template-stub=false"]
+                if version.parse(torch.version.cuda or "0") >= version.parse("12.8")
+                else []
+            ),
             # "-gencode",
             # "arch=compute_70,code=compute_70",
             # "-dbg=1",

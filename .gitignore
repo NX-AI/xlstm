@@ -8,6 +8,7 @@ build/
 *.jpg
 *.JPEG
 *.mp4
+.DS_Store
 
 yamls_run/
 temp/

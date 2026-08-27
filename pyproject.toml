@@ -2,7 +2,6 @@
 requires = [
   "scikit-build-core>=0.11",
   "pybind11>=3.0",
-  "numpy>=2.0",
   "torch>=2.0",
 ]
 build-backend = "scikit_build_core.build"
@@ -26,22 +25,10 @@ classifiers = [
 keywords = ["LSTM", "Transformer", "Machine Learning", "Deep Learning", "State Space Models"]
 dependencies = [
     "torch>=2.0",
-    "einops",
-    "numpy",
-    "opt_einsum", 
     "omegaconf",
-    "transformers",
-    "reportlab",
-    "joypy",
-    "ipykernel",
-    "dacite",
-    "ftfy", 
+    "safetensors",
+    "packaging",
     "ninja",
-    "huggingface-hub",
-    "rich",
-    "tokenizers",
-    "tqdm",
-    "seaborn",
     "mlstm_kernels; python_version >= '3.11'",
 ]
 
@@ -81,9 +68,13 @@ torch = [
 [tool.scikit-build]
 minimum-version = "build-system.requires"
 
+[tool.pytest.ini_options]
+pythonpath = ["."]
+log_cli = true
+log_cli_level = "INFO"
+log_format = "%(asctime)s %(levelname)s %(message)s"
+log_date_format = "%Y-%m-%d %H:%M:%S"
 
-[tool.setuptools.package-data]
-"xlstm" = ["blocks/slstm/src/cuda/*.c", "blocks/slstm/src/cuda/*.cc", "blocks/slstm/src/cuda/*.h", "blocks/slstm/src/cuda/*.cu", "blocks/slstm/src/cuda/*.cuh", "blocks/slstm/src/util/*.c", "blocks/slstm/src/util/*.cc", "blocks/slstm/src/util/*.h", "blocks/slstm/src/util/*.cu", "blocks/slstm/src/util/*.cuh"]
 
 [project.urls]
 Repository = "https://github.com/NX-AI/xlstm"
