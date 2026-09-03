@@ -25,10 +25,14 @@ classifiers = [
 keywords = ["LSTM", "Transformer", "Machine Learning", "Deep Learning", "State Space Models"]
 dependencies = [
     "torch>=2.0",
-    "omegaconf",
-    "safetensors",
     "packaging",
     "ninja",
+]
+
+[project.optional-dependencies]
+large = [
+    "omegaconf",
+    "safetensors",
     "mlstm_kernels; python_version >= '3.11'",
 ]
 

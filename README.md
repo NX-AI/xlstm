@@ -27,15 +27,7 @@ and shows promising performance on Language Modeling when compared to Transforme
 We refer to the optimized architecture for our xLSTM 7B as xLSTM Large. 
 
 ## Minimal Installation
-
-Create a conda environment from the file `environment_pt240cu124.yaml`.
-Install the model code only (i.e. the module `xlstm`) as package:
-
-For using the xLSTM Large 7B model install [`mlstm_kernels`](https://github.com/NX-AI/mlstm_kernels) via:
-``` 
-pip install mlstm_kernels
-```
-Then install the xlstm package via pip: 
+Install the xlstm package via pip:
 ```bash
 pip install xlstm
 ```
@@ -46,6 +38,12 @@ cd xlstm
 pip install -e .
 ```
 
+For using the xLSTM Large 7B model, install the `large` optional dependencies (including [`mlstm_kernels`](https://github.com/NX-AI/mlstm_kernels)):
+```bash
+pip install "xlstm[large]"
+```
+When installing from source, use `pip install -e ".[large]"` to include the xLSTM Large dependencies.
+
 ## Requirements
 
 This package is based on PyTorch and was tested for versions `>=1.8`. For a well-tested environment, install the `environment_pt240cu124.yaml` as:
@@ -54,7 +52,7 @@ conda env create -n xlstm -f environment_pt240cu124.yaml
 conda activate xlstm
 ``` 
 
-For the xLSTM Large 7B model we require our [`mlstm_kernels`](https://github.com/NX-AI/mlstm_kernels) package, which provides fast kernels for the xLSTM.
+The optional dependencies for the xLSTM Large 7B model include our [`mlstm_kernels`](https://github.com/NX-AI/mlstm_kernels) package, which provides fast kernels for the xLSTM.
 
 <div align="center">
 

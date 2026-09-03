@@ -1828,22 +1828,27 @@ name = "xlstm"
 version = "2.0.5"
 source = { editable = "." }
 dependencies = [
-    { name = "mlstm-kernels", marker = "python_full_version >= '3.11'" },
     { name = "ninja" },
-    { name = "omegaconf" },
     { name = "packaging" },
-    { name = "safetensors" },
     { name = "torch", version = "2.11.0", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux' and sys_platform != 'win32'" },
     { name = "torch", version = "2.11.0+cu126", source = { registry = "https://download.pytorch.org/whl/cu126" }, marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
 ]
 
+[package.optional-dependencies]
+large = [
+    { name = "mlstm-kernels", marker = "python_full_version >= '3.11'" },
+    { name = "omegaconf" },
+    { name = "safetensors" },
+]
+
 [package.metadata]
 requires-dist = [
-    { name = "mlstm-kernels", marker = "python_full_version >= '3.11'" },
+    { name = "mlstm-kernels", marker = "python_full_version >= '3.11' and extra == 'large'" },
     { name = "ninja" },
-    { name = "omegaconf" },
+    { name = "omegaconf", marker = "extra == 'large'" },
     { name = "packaging" },
-    { name = "safetensors" },
+    { name = "safetensors", marker = "extra == 'large'" },
     { name = "torch", marker = "sys_platform != 'linux' and sys_platform != 'win32'", specifier = ">=2.0" },
     { name = "torch", marker = "sys_platform == 'linux' or sys_platform == 'win32'", specifier = ">=2.0", index = "https://download.pytorch.org/whl/cu126" },
 ]
+provides-extras = ["large"]

@@ -11,7 +11,9 @@ try:
         BackendModeType,
     )
 except ImportError:
-    raise ImportError("Please install mlstm_kernels package to use mLSTM block.")
+    raise ImportError(
+        'Please install xlstm with the "large" optional dependencies to use xLSTM Large: pip install "xlstm[large]".'
+    )
 
 
 import torch
