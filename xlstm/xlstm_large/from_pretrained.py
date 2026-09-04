@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from omegaconf import OmegaConf
+import yaml
 from safetensors.torch import load_file
 
 from .model import xLSTMLarge, xLSTMLargeConfig
@@ -43,7 +43,8 @@ def load_from_pretrained(
             state_dict.update(load_file(sharded_path))
             n += 1
             sharded_path = checkpoint_path / f"model_{n}.safetensors"
-    config = OmegaConf.load(checkpoint_path / "config.yaml")
+    with (checkpoint_path / "config.yaml").open(encoding="utf-8") as config_file:
+        config = yaml.safe_load(config_file)
 
     mlstm_config = xLSTMLargeConfig(**config)
     # Note: The default weight mode is single.

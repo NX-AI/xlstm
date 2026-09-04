@@ -20,7 +20,7 @@ dependencies:
       - pre-commit #==3.6.0
       - ipykernel #==6.29.0
       - dacite #==1.8.1
-      - omegaconf #==2.3.0
+      - pyyaml
       - torchmetrics #==1.3.0
       - tqdm #==4.66.1
       - pytest #==8.0.0
