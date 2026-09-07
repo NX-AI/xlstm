@@ -24,7 +24,11 @@ jobs:
       - name: Build release distributions
         run: |
           python -m pip install build
-          python -m build
+          # Build a pure-Python wheel; CUDA extensions are compiled at runtime.
+          python -m build \
+            -Cwheel.cmake=false \
+            -Cwheel.py-api=py3 \
+            -Cwheel.platlib=false
 
       - name: Upload distributions
         uses: actions/upload-artifact@v4
