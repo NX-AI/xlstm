@@ -45,7 +45,7 @@ jobs:
     # Dedicated environments with protections for publishing are strongly recommended.
     environment:
       name: pypi
-      url: https://pypi.org/p/mlstm-kernels/
+      url: https://pypi.org/p/xlstm/
 
     steps:
       - name: Retrieve release distributions
