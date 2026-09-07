@@ -215,7 +215,7 @@ y.shape == x.shape
 If you are working with yaml strings / files for configuration you can also use dacite to create the config dataclasses. This is the same as the snippet above:
 
 ```python
-from omegaconf import OmegaConf
+import yaml
 from dacite import from_dict
 from dacite import Config as DaciteConfig
 from xlstm import xLSTMBlockStack, xLSTMBlockStackConfig
@@ -240,8 +240,8 @@ num_blocks: 7
 embedding_dim: 128
 slstm_at: [1]
 """
-cfg = OmegaConf.create(xlstm_cfg)
-cfg = from_dict(data_class=xLSTMBlockStackConfig, data=OmegaConf.to_container(cfg), config=DaciteConfig(strict=True))
+cfg = yaml.safe_load(xlstm_cfg)
+cfg = from_dict(data_class=xLSTMBlockStackConfig, data=cfg, config=DaciteConfig(strict=True))
 xlstm_stack = xLSTMBlockStack(cfg)
 
 x = torch.randn(4, 256, 128).to("cuda")
@@ -257,7 +257,7 @@ y.shape == x.shape
 The `xLSTMLMModel` is a wrapper around the `xLSTMBlockStack` that adds the token embedding and lm head.
 
 ```python
-from omegaconf import OmegaConf
+import yaml
 from dacite import from_dict
 from dacite import Config as DaciteConfig
 from xlstm import xLSTMLMModel, xLSTMLMModelConfig
@@ -283,8 +283,8 @@ num_blocks: 7
 embedding_dim: 128
 slstm_at: [1]
 """
-cfg = OmegaConf.create(xlstm_cfg)
-cfg = from_dict(data_class=xLSTMLMModelConfig, data=OmegaConf.to_container(cfg), config=DaciteConfig(strict=True))
+cfg = yaml.safe_load(xlstm_cfg)
+cfg = from_dict(data_class=xLSTMLMModelConfig, data=cfg, config=DaciteConfig(strict=True))
 xlstm_stack = xLSTMLMModel(cfg)
 
 x = torch.randint(0, 50304, size=(4, 256)).to("cuda")

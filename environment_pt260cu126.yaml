@@ -20,7 +20,7 @@ dependencies:
       - pre-commit
       - ipykernel
       - dacite
-      - omegaconf
+      - pyyaml
       - torchmetrics
       - tqdm
       - pytest
