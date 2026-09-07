@@ -8,7 +8,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "xlstm"
-version = "2.0.5"
+version = "2.0.6"
 authors = [
   { name="Maximilian Beck", email="beck@ml.jku.at" },
   { name="Korbinian Poeppel", email="poeppel@ml.jku.at" },
