@@ -135,6 +135,12 @@ If you are working inside Apple's MLX ecosystem, check out the community-driven
 [xLSTM-metal](https://github.com/MLXPorts/xLSTM-metal) port which provides an
 MLX-native implementation of xLSTM targeting Apple Silicon.
 
+If you are targeting embedded or bare-metal hardware, check out the
+community-driven [xlstm.c](https://github.com/raws-labs/xlstm.c), which
+implements the sLSTM and mLSTM cells in portable C99 with no framework,
+allocator or operating system, and has backends for Cortex-M, Helium and
+Xtensa.
+
 # Models from the xLSTM NeurIPS Paper
 
 This section explains how to use the models from the xLSTM paper.
