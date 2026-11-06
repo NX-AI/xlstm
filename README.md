@@ -321,12 +321,15 @@ If you use this codebase, or otherwise find our work valuable, please cite the x
   url = {https://arxiv.org/abs/2405.04517}, 
 }
 
-@article{beck:25xlstm7b,
-  title = {{xLSTM 7B}: A Recurrent LLM for Fast and Efficient Inference},
-  author = {Maximilian Beck and Korbinian Pöppel and Phillip Lippe and Richard Kurle and Patrick M. Blies and Günter Klambauer and Sebastian Böck and Sepp Hochreiter},
-  booktitle = {Forty-second International Conference on Machine Learning},
-  year = {2025},
-  url = {https://arxiv.org/abs/2503.13427}
+@inproceedings{beck:25xlstm7b,
+  title     = {{xLSTM 7B}: A Recurrent {LLM} for Fast and Efficient Inference},
+  author    = {Beck, Maximilian and P{\"o}ppel, Korbinian and Lippe, Phillip and Kurle, Richard and Blies, Patrick M. and Klambauer, G{\"u}nter and B{\"o}ck, Sebastian and Hochreiter, Sepp},
+  booktitle = {International Conference on Machine Learning},
+  year      = {2025},
+  eprint    = {2503.13427},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.LG},
+  url       = {https://arxiv.org/abs/2503.13427}
 }
 
 ```
